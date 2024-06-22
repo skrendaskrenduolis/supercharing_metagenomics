@@ -1,0 +1,374 @@
+---
+title: "Plotting fastp+kma runtimes at various thread counts on local machine"
+execute: 
+  echo: false
+  eval: true
+format: html
+editor: 
+  markdown: 
+    wrap: 80
+---
+
+
+```{r}
+#load libraries
+library(matrixStats)
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+library(patchwork)
+library(forcats)
+library(hrbrthemes)
+
+```
+
+```{r}
+#load data
+raw_data <- read_csv("../../thesis_raw_data/results_file.csv", col_names = c("trial", "conditions", "fastp_threads", "kma_threads", "time"))
+
+raw_data <- raw_data |>
+  mutate(thread_split = paste(fastp_threads, "/", kma_threads, sep = " ")) |>
+  mutate(extended_conditions = recode(conditions,
+                             "up" = "uncompressed pipe",
+                             "uw" = "uncompressed write",
+                             "zp" = "compressed pipe",
+                             "zw" = "compressed write"))
+```
+```{r}
+# density and bar plots showing data distributions
+
+raw_data |>
+  #mutate(log_time = log(time)) |>
+  ggplot(aes(x = time)) +
+  geom_density() +
+  facet_wrap(~extended_conditions) +
+  theme_minimal()
+
+
+raw_data |>
+  #mutate(log_time = log(time)) |>
+  ggplot(aes(x = time)) +
+  geom_boxplot() +
+  facet_wrap(~extended_conditions) +
+  theme_minimal()
+```
+
+
+```{r}
+
+#subsetting data for 2 way anova within conditions
+anova_data <- raw_data |>
+  select(extended_conditions, fastp_threads, kma_threads, time) |>
+  convert_as_factor(fastp_threads, kma_threads)
+```
+
+```{r}
+# summary stats from raw data
+summary_stats <- raw_data |>
+  group_by(conditions, fastp_threads, kma_threads) |>
+  summarize(
+    mean_time = mean(time),
+    sd_time = sd(time),
+    n_time = n()
+  ) |>
+  mutate(se_time = sd_time / sqrt(n_time),
+         lower_ci = mean_time - qt(1-(0.05/2), n_time - 1) * se_time,
+         upper_ci = mean_time + qt(1-(0.05/2), n_time - 1) * se_time) |>
+  mutate(thread_split = paste(fastp_threads, "/", kma_threads, sep = " ")) |>
+  mutate(extended_conditions = recode(conditions,
+                             "up" = "uncompressed pipe",
+                             "uw" = "uncompressed write",
+                             "zp" = "compressed pipe",
+                             "zw" = "compressed write")) ##|>
+  ##convert_as_factor(fastp_threads, kma_threads)
+
+# Displaying the summary statistics
+print(summary_stats)
+```
+
+
+```{r}
+
+#bar plot for summary stats showing mean elapsed time within condition for each thread ratio, CI95 error bars
+summary_stats |>
+  ggplot() +
+  geom_col(aes(x = thread_split, y = mean_time)) +
+  geom_errorbar(aes(x = thread_split, 
+                    ymin = lower_ci,
+                    ymax = upper_ci)) +
+  facet_wrap(~extended_conditions) +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x = "fastp / kma thread number",
+       y = "mean elapsed (wall clock) time (s)")
+```
+
+```{r}
+summary_stats |> 
+  ggplot(aes(x = kma_threads, y = mean_time, color = extended_conditions)) +
+  geom_line(size = 1) +
+  geom_point() +
+  geom_errorbar(aes(x = kma_threads, 
+                    ymin = lower_ci,
+                    ymax = upper_ci)) +
+  facet_wrap(~fastp_threads) +
+  theme_minimal()
+
+```
+
+```{r}
+# within condition display showing decrease in elapsed time as fastp thread count is increased, comparing kma thread counts
+
+summary_stats |>
+  #filter(extended_conditions == "uncompressed write") |>
+  convert_as_factor(kma_threads) |> 
+  ggplot(aes(x = fastp_threads, y = mean_time, color = kma_threads)) +
+  geom_line(size = 1) +
+  geom_point() +
+  geom_errorbar(aes(x = fastp_threads, 
+                    ymin = lower_ci,
+                    ymax = upper_ci), size = 1) +
+  theme_minimal() +
+  facet_wrap(~extended_conditions)
+
+
+```
+
+```{r}
+# unused for now
+# split conditions into two separate variables to look at effect between them
+raw_data <- raw_data |> mutate(compression = case_when(
+  conditions == "uw" | conditions == "up" ~ "no",
+  conditions == "zw" | conditions == "zp" ~ "yes"),
+  pipe = case_when(
+  conditions == "uw" | conditions == "zw" ~ "no",
+  conditions == "up" | conditions == "zp" ~ "yes")) |>
+  select(!conditions) |>
+  convert_as_factor(trial, compression, pipe)
+
+
+raw_data
+```          
+
+```{r}
+# 2-way anova between thread combinations for each condition
+anova_data_nested <- anova_data |> 
+  group_by(extended_conditions) |>
+  nest() |>
+  mutate(aov_model = map(.x = data,
+      .f = ~aov(time ~ fastp_threads*kma_threads, data = .x)))
+
+```
+
+```{r}
+# getting and saving summary statistics 
+anova_summary <- anova_data_nested |>
+  select(extended_conditions, aov_model)
+
+# tidying anova model
+anova_summary <- anova_summary |> 
+  mutate(summary_object_tidy = map(.x = aov_model, .f = ~tidy(x = .x, conf.int = TRUE,
+       conf.level = 0.95)))
+
+# unnesting
+anova_summary <- anova_summary |>
+  unnest(summary_object_tidy)
+
+# filtering unused rows
+anova_summary <- anova_summary |>
+  select(!aov_model) |>
+  filter(term != "Residuals")
+
+
+# adding column showing interaction significance
+anova_summary <- anova_summary |>
+  mutate(significant = case_when(
+    p.value < 0.001 ~ "***",
+    0.001 <= p.value & p.value < 0.01 ~ "**",
+    0.01 <= p.value & p.value < 0.05 ~ "*",
+    .default = ""))
+
+anova_summary
+```
+
+
+
+```{r}
+# Tukey Honest Significant Difference 
+# looking to see the difference in time as well as significance for each thread ratio combination within conditions
+
+anova_data_nested <- anova_data_nested |> 
+  mutate(tukey_object = map(.x = aov_model,
+      .f = ~TukeyHSD(x = .x, which = "fastp_threads:kma_threads")))
+
+anova_data_nested |> 
+  select(tukey_object) |>
+  pull()
+```
+
+
+```{r}
+# effect size comparison
+
+# 3 - way anova of threads and combined conditions (4 compression / write combinations)
+larger_anova_model <- anova_data |>
+  convert_as_factor(extended_conditions) |>
+  aov(time ~ fastp_threads*kma_threads*extended_conditions, data = _)
+
+
+summary(larger_anova_model)
+
+
+# TukeyHSD, selecting only where interaction of all 3 is taken into account
+large_tukey_object <- TukeyHSD(x = larger_anova_model, which = "fastp_threads:kma_threads:extended_conditions")
+
+
+# saving to tibble
+large_tukey_tibble <- large_tukey_object$`fastp_threads:kma_threads:extended_conditions` |>
+  as_tibble(rownames = "temp") |>
+  separate(temp, c("first_condition", "second_condition"), sep = "-")
+
+
+# Tukey object does not have interactions between the same conditions, so those are artificially added
+# with 0 and large p value
+zeroes_1 <- large_tukey_tibble$first_condition |> 
+  unique() |>
+  as_tibble() |>
+  rename(first_condition = value) |>
+  mutate(second_condition = first_condition, diff = 0, `p adj` = 1)
+
+
+zeroes_2 <- large_tukey_tibble$second_condition |> 
+  unique() |>
+  as_tibble() |>
+  rename(first_condition = value) |>
+  mutate(second_condition = first_condition, diff = 0, `p adj` = 1)
+
+
+# TUkey object only has one way of the interaction, but not the opposite (which would have
+# opposite sign diff), so this is added manually with the same p-value as original
+
+mirror <- large_tukey_tibble |>
+  select(second_condition, first_condition, diff, `p adj`) |>
+  rename(second_condition = first_condition, 
+         first_condition = second_condition) |>
+  mutate(diff = -diff)
+
+# original is subsetted
+original <- large_tukey_tibble |>
+  select(first_condition, second_condition, diff, `p adj`)
+  
+
+# objects are combined,
+# column is added to determine whether interaction is significant
+# criteria: adj p value less than our alpha and the difference is < 0 (reduction in time)
+edited_tukey_tibble <- bind_rows(original, mirror, zeroes_1, zeroes_2) |>
+  unique() |> 
+  arrange(first_condition, second_condition) |>
+  mutate(significant = case_when(
+    `p adj` < 0.05 & diff < 0 ~ "yes",
+    .default = "no"
+  )) |>
+  mutate(significant_numeric = case_when(
+    significant == "yes" ~ 1,
+    significant == "no" ~ 0
+  )) |> 
+  convert_as_factor(significant)
+
+```
+
+```{r}
+# heatmaps of difference and significance / relevance
+edited_tukey_tibble |>
+  ggplot(aes(x = second_condition, y = first_condition, fill = diff)) +
+  geom_tile(color = "black") +
+  scale_fill_viridis_c() +
+  theme(axis.text.x = element_text(angle = 90, size = 6, vjust = 0),
+        axis.text.y = element_text(size = 6)) +
+  labs(x = "second condition",
+       y = "first condition",
+       title = "fastp threads : kma threads : scenario",
+       fill = "Difference in elapsed time (s)"
+       )
+
+
+edited_tukey_tibble|>
+  ggplot(aes(x = second_condition, y = first_condition, fill = significant)) +
+  geom_tile() +
+  scale_fill_viridis_d() +
+  theme_minimal()
+
+```
+
+```{r}
+# average effect analysis
+# convert tukey object to matrix after some editing (first condition rows, second condition cols, time values)
+tukey_matrix <- edited_tukey_tibble |>
+  filter(first_condition != second_condition) |>
+  select(first_condition, second_condition, diff) |>
+  pivot_wider(names_from = second_condition, values_from = diff)
+
+
+# calculate mean difference across row for each first condition
+# we now have average difference when taking into account all other conditions when comparing to this one
+mean_diffs <- tukey_matrix |>
+  mutate(mean_diff = rowMeans(tukey_matrix[,-1], na.rm = TRUE)) |>
+  select(first_condition, mean_diff) |>
+  arrange(desc(mean_diff))
+
+mean_diffs
+
+# plot the mean differences in decreasing order
+mean_diffs |>  
+  ggplot(aes(x = reorder(first_condition, -mean_diff),
+             y = mean_diff)) +
+  geom_point() + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 7)) +
+  labs(x = "condition",
+       y = "mean change in elapsed (wall clock) time (s)")
+```
+
+```{r}
+tukey_matrix_significance <- edited_tukey_tibble |>
+  filter(first_condition != second_condition) |>
+  select(first_condition, second_condition, significant_numeric) |>
+  pivot_wider(names_from = second_condition, values_from = significant_numeric)
+
+
+# calculate mean difference across row for each first condition
+# we now have average difference when taking into account all other conditions when comparing to this one
+significance_ratios <- tukey_matrix_significance |>
+  mutate(sig_ratio = rowMeans(tukey_matrix_significance[,-1], na.rm = TRUE)) |>
+  select(first_condition, sig_ratio) |>
+  arrange(sig_ratio)
+
+significance_ratios
+
+significance_ratios |>
+  ggplot(aes(x = reorder(first_condition, sig_ratio),
+             y = sig_ratio)) +
+  geom_point() + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 7)) +
+  labs(x = "condition",
+       y = "Significant interaction ratio")
+```
+
+```{r}
+mean_diffs |>
+  filter(mean_diff < 0) |>
+  ggdotchart(x = "first_condition", y = "mean_diff",
+           sorting = "descending",                       # Sort value in descending order
+           add = "segments",                             # Add segments from y = 0 to dots
+           add.params = list(color = "lightgray", size = 2), # Change segment color and size
+           dot.size = 6,                                 # Large dot 
+           ggtheme = theme_pubr()                        # ggplot2 theme
+           )+
+  geom_hline(yintercept = 0, linetype = 2, color = "lightgray") +
+  labs(y = "mean elapsed time (s)",
+       x = "condition",
+       title = "Mean elapsed of conditions compared to all other conditions",
+       subtitle = "Condition = fastp threads : kma threads : scenario\nOnly mean reductions in runtime displayed")
+```
+

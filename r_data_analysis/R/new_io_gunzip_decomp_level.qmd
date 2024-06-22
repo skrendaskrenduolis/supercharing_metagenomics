@@ -1,0 +1,150 @@
+---
+title: "/usr/bin/time new basic benchmarks"
+execute: 
+  echo: false
+  eval: true
+format: html
+editor: 
+  markdown: 
+    wrap: 80
+---
+```{r}
+#load libraries
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+```
+
+
+
+```{r}
+raw_io_new_data <- read_table("../../thesis_dir/data/experiment_raw/benchmark_new/io_timing_new/io_new_tests.tsv", col_types = cols(elapsed_time = col_character()))
+
+#convert to seconds and sort rows
+processed_io_new_data <- raw_io_new_data |>
+  separate(elapsed_time, into = c("mins", "sec"), sep = ":") |>
+  mutate(mins = as.numeric(mins),
+         sec = as.numeric(sec)) |>
+  mutate(`elapsed_time` = (mins * 60) + sec) |>
+  select(name, `elapsed_time`) |>
+  arrange(factor(name, levels =  unique(str_sort(name, numeric = TRUE))))
+
+processed_io_new_data$name <- sub("\\.txt$", "", processed_io_new_data$name)
+
+```
+
+```{r}
+raw_gunzip_new_data <- read_table("../../thesis_dir/data/experiment_raw/benchmark_new/gunzip_timing_new/gunzip_new_tests.tsv", col_types = cols(elapsed_time = col_character()))
+
+#convert to seconds and sort rows
+processed_gunzip_new_data <- raw_gunzip_new_data |>
+  separate(elapsed_time, into = c("mins", "sec"), sep = ":") |>
+  mutate(mins = as.numeric(mins),
+         sec = as.numeric(sec)) |>
+  mutate(`elapsed_time` = (mins * 60) + sec) |>
+  select(name, `elapsed_time`) |>
+  arrange(factor(name, levels =  unique(str_sort(name, numeric = TRUE))))
+
+processed_gunzip_new_data$name <- sub("\\.txt$", "", processed_gunzip_new_data$name)
+```
+
+```{r}
+raw_decompression_new_data <- read_table("../../thesis_dir/data/experiment_raw/benchmark_new/decompression_level_timing_new/decompression_new_tests.tsv", col_types = cols(elapsed_time = col_character()))
+
+#convert to seconds and sort rows
+processed_decompression_new_data <- raw_decompression_new_data |>
+  separate(elapsed_time, into = c("mins", "sec"), sep = ":") |>
+  mutate(mins = as.numeric(mins),
+         sec = as.numeric(sec)) |>
+  mutate(`elapsed_time` = (mins * 60) + sec) |>
+  select(name, `elapsed_time`) |>
+  arrange(factor(name, levels =  unique(str_sort(name, numeric = TRUE))))
+
+processed_decompression_new_data$name <- sub("\\.txt$", "", processed_decompression_new_data$name)
+```
+
+```{r}
+# IO
+# processed_io_new_data$name <- sub("1GB_1\\.fastq\\.gz\\.io_timing_", "", processed_io_new_data$name)
+# 
+# processed_io_new_data$name <- sub("5GB_1\\.fastq\\.gz\\.io_timing_", "", processed_io_new_data$name)
+
+processed_io_new_data$name <- sub("1\\.fastq\\.gz\\.", "", processed_io_new_data$name)
+# 
+# processed_io_new_data$name <- sub("_1\\.fastq\\.gz\\.", "", processed_io_new_data$name)
+
+
+processed_io_new_data |>
+  filter(str_detect(name, "1GB")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of various IO operations\nfor 1 GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+
+
+processed_io_new_data |>
+  filter(str_detect(name, "5GB")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of various IO operations\nfor 5 GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# cp  ~/homedir/file.gz ~/homedir/file_copy.gz"
+# cp  /tmpfs/file.gz /tmpfs/file_copy.gz"
+# cp  ~/homedir/file.gz /tmpfs/file.gz"
+# cp  /tmpfs/file.gz ~/homedir/file.gz "
+```
+
+```{r}
+# gunzip
+processed_gunzip_new_data$name <- sub("_1\\.fastq\\.gz\\.gzip_timing", "", processed_gunzip_new_data$name)
+processed_gunzip_new_data |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of gunzip operations\nfor 1 GB and 5 GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# gunzip -c /tmpfs/file.gz > /dev/null
+```
+
+
+```{r}
+processed_decompression_new_data$name <- sub("decompression_times_", "", processed_decompression_new_data$name)
+processed_decompression_new_data |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue", "black"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of decompression of uncompressed 22 GB\nmetagenome file from various compression levels",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+#gunzip -`compression level` -c /tmpfs/file.gz > /dev/null
+```
+

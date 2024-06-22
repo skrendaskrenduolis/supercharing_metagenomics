@@ -1,0 +1,48 @@
+---
+title: "/usr/bin/time comparison effect of flags on kma compilation"
+execute: 
+  echo: false
+  eval: true
+format: html
+editor: 
+  markdown: 
+    wrap: 80
+---
+```{r}
+#load libraries
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+```
+
+
+```{r}
+raw_compile_flag_data <- read_table("../../thesis_dir/data/new_data/kma_compile_options_times.tsv")
+```
+
+
+```{r}
+compile_flag_data_long <- raw_compile_flag_data |>
+  pivot_longer(cols = everything(), names_to = "name", values_to = "elapsed_time")
+
+compile_flag_data_long <- compile_flag_data_long |>
+  group_by(name) |>
+  mutate(mean_time = mean(elapsed_time)) |>
+  mutate(upper_ci = mean_time + sd(elapsed_time)/sqrt(length(elapsed_time)),
+         lower_ci = mean_time - sd(elapsed_time)/sqrt(length(elapsed_time)))
+
+compile_flag_data_long |> 
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 25,
+            xlab = "kma sample with optimization / vectorization / file size",
+            ylab = "Mean elapsed time (s)",
+            add = "mean_se", label = TRUE, lab.size = 4) + 
+  geom_errorbar(aes(group = name, ymax = upper_ci, ymin = lower_ci)) +
+  rremove("legend") + 
+  theme(axis.text.x = element_text(size = 8)) + 
+  plot_annotation(title = "Elapsed time of non-pipe kma for 1GB and 5GB paired end files with varying compile flags\nAll with -march=native, compile time ~15s",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/13.1.0 varied flags:\n-O3 / -Ofast / -fno-tree-vectorize")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+```
+

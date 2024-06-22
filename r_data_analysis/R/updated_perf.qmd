@@ -1,0 +1,505 @@
+---
+title: "Perf stat 1GB and 5GB paired end files and comparison of file origin (in memory and if decompressed)"
+execute: 
+  echo: false
+  eval: true
+format: html
+editor: 
+  markdown: 
+    wrap: 80
+---
+```{r}
+#load libraries
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+```
+
+```{r}
+perf_raw <- read_tsv("../../thesis_dir/data/pipetest_tsv/paired_end.tsv")
+```
+
+```{r}
+perf_raw <- perf_raw |>
+  mutate(combined_cpu_time = usr_time + sys_time)
+perf_summary <- perf_raw |>
+  group_by(name) |>
+  select(!c(cache_ref, cache_miss)) |>
+   summarise(mean.elapsed_time = mean(elapsed_time, na.rm = TRUE),
+            sd.elapsed_time = sd(elapsed_time, na.rm = TRUE),
+            mean.usr_time = mean(usr_time, na.rm = TRUE),
+            sd.usr_time = sd(usr_time, na.rm = TRUE),
+            mean.sys_time = mean(sys_time, na.rm = TRUE),
+            sd.sys_time = sd(sys_time, na.rm = TRUE),
+            mean.cycles = mean(cycles, na.rm = TRUE),
+            sd.cycles = sd(cycles, na.rm = TRUE),
+            mean.instructions = mean(instructions, na.rm = TRUE),
+            sd.instructions = sd(instructions, na.rm = TRUE),
+            mean.ipc = mean(ipc, na.rm = TRUE),
+            sd.ipc = sd(ipc, na.rm = TRUE),
+            mean.combined_cpu_time = mean(combined_cpu_time, na.rm = TRUE),
+            sd.combined_cpu_time = sd(combined_cpu_time, na.rm = TRUE),
+            n.samples = n()) |>
+  mutate(se.elapsed_time = sd.elapsed_time / sqrt(n.samples),
+         lower.ci.elapsed_time = mean.elapsed_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+         upper.ci.elapsed_time = mean.elapsed_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+se.usr_time = sd.usr_time / sqrt(n.samples),
+         lower.ci.usr_time = mean.usr_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+         upper.ci.usr_time = mean.usr_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+se.sys_time = sd.sys_time / sqrt(n.samples),
+         lower.ci.sys_time = mean.sys_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+         upper.ci.sys_time = mean.sys_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+se.cycles = sd.cycles / sqrt(n.samples),
+         lower.ci.cycles = mean.cycles
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+         upper.ci.cycles = mean.cycles
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+se.instructions = sd.instructions / sqrt(n.samples),
+         lower.ci.instructions = mean.instructions
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+         upper.ci.instructions = mean.instructions
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+se.ipc = sd.ipc / sqrt(n.samples),
+         lower.ci.ipc = mean.ipc
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.ipc,
+         upper.ci.ipc = mean.ipc
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.ipc,
+se.combined_cpu_time = sd.combined_cpu_time / sqrt(n.samples),
+         lower.ci.combined_cpu_time = mean.combined_cpu_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.combined_cpu_time,
+         upper.ci.combined_cpu_time = mean.combined_cpu_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.combined_cpu_time)
+
+perf_raw <- perf_raw |>
+  arrange(factor(name, levels = c("fastp_pipe_stat_1GB.txt", 
+                                  "fastp_pipe_stat_5GB.txt",
+                                  "fastp_pipe_stat_mem_1GB.txt",
+                                  "fastp_pipe_stat_mem_5GB.txt",
+                                  "fastp_pipe_stat_mem_unzip_1GB.txt",
+                                  "fastp_pipe_stat_mem_unzip_5GB.txt",
+                                  "kma_pipe_stat_1GB.txt",
+                                  "kma_pipe_stat_5GB.txt",
+                                  "kma_pipe_stat_mem_1GB.txt",
+                                  "kma_pipe_stat_mem_5GB.txt",
+                                  "kma_pipe_stat_mem_unzip_1GB.txt",
+                                  "kma_pipe_stat_mem_unzip_5GB.txt",
+                                  "samtools_sort_stat_1GB.txt",
+                                  "samtools_sort_stat_5GB.txt", 
+                                  "samtools_sort_stat_mem_1GB.txt", 
+                                  "samtools_sort_stat_mem_5GB.txt",
+                                  "samtools_sort_stat_mem_unzip_1GB.txt",
+                                  "samtools_sort_stat_mem_unzip_5GB.txt",
+                                  "bcftools_mpileup_stat_1GB.txt",
+                                  "bcftools_mpileup_stat_5GB.txt",
+                                  "bcftools_mpileup_stat_mem_1GB.txt",
+                                  "bcftools_mpileup_stat_mem_5GB.txt",
+                                  "bcftools_mpileup_stat_mem_unzip_1GB.txt",
+                                  "bcftools_mpileup_stat_mem_unzip_5GB.txt",
+                                  "bcftools_call_stat_1GB.txt",
+                                  "bcftools_call_stat_5GB.txt",
+                                  "bcftools_call_stat_mem_1GB.txt",
+                                  "bcftools_call_stat_mem_5GB.txt",
+                                  "bcftools_call_stat_mem_unzip_1GB.txt",
+                                  "bcftools_call_stat_mem_unzip_5GB.txt",
+                                  "bcftools_norm_stat_1GB.txt",
+                                  "bcftools_norm_stat_5GB.txt",
+                                  "bcftools_norm_stat_mem_1GB.txt",
+                                  "bcftools_norm_stat_mem_5GB.txt",
+                                  "bcftools_norm_stat_mem_unzip_1GB.txt",
+                                  "bcftools_norm_stat_mem_unzip_5GB.txt",
+                                  "bcftools_filter_stat_1GB.txt",
+                                  "bcftools_filter_stat_5GB.txt",
+                                  "bcftools_filter_stat_mem_1GB.txt",
+                                  "bcftools_filter_stat_mem_5GB.txt",
+                                  "bcftools_filter_stat_mem_unzip_1GB.txt",
+                                  "bcftools_filter_stat_mem_unzip_5GB.txt")))
+
+perf_raw$name <- sub("\\.txt$", "", perf_raw$name)
+```
+
+```{r}
+
+#combined cpu time
+perf_raw |> 
+  filter(str_detect(name, "1GB")) |>
+  filter(!str_detect(name, "mem")) |>
+  ggbarplot(x = "name", y = "combined_cpu_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40,
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5, lab.vjust = 0.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Combined CPU time of each tool in ARG pipeline\n1GB paired end metagenome file input compressed from disk",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+  # ggboxplot(x = "name", y = "combined_cpu_time",
+  #           add = c("jitter", "mean"), color = "name", fill = "name", alpha = 0.1, palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#FF7F50", "#4CAF50", "#FFD700"),
+  #           x.text.angle = 45, x.text.size = 5)  + rremove("legend")  + theme(axis.text.x = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "1GB")) |>
+  filter(str_detect(name, "mem"), !str_detect(name, "unzip")) |>
+  ggbarplot(x = "name", y = "combined_cpu_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40,
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5, lab.vjust = 0.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Combined CPU time of each tool in ARG pipeline\n1GB paired end metagenome file input compressed from memory",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "1GB")) |>
+  filter(str_detect(name, "unzip")) |>
+  ggbarplot(x = "name", y = "combined_cpu_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40,
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5, lab.vjust = 0.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Combined CPU time of each tool in ARG pipeline\n1GB paired end metagenome file input uncompressed from memory",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(!str_detect(name, "mem")) |>
+  ggbarplot(x = "name", y = "combined_cpu_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            lab.pos = "in",
+            x.text.angle = 40,
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5, lab.vjust = 0.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Combined CPU time of each tool in ARG pipeline\n5GB paired end metagenome file input compressed from disk",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(str_detect(name, "mem"), !str_detect(name, "unzip")) |>
+  ggbarplot(x = "name", y = "combined_cpu_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40,
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5, lab.vjust = 0.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Combined CPU time of each tool in ARG pipeline\n5GB paired end metagenome file input compressed from memory",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(str_detect(name, "unzip")) |>
+  ggbarplot(x = "name", y = "combined_cpu_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40,
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5, lab.vjust = 0.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Combined CPU time of each tool in ARG pipeline\n5GB paired end metagenome file input uncompressed from memory",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+
+perf_raw |> 
+  filter(str_detect(name, "1GB")) |>
+  filter(str_detect(name, "fastp")) |>
+  ggbarplot(x = "name", y = "combined_cpu_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40,
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5, lab.vjust = 1.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Combined CPU time of various fastp conditions in ARG pipeline\n1GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+  
+  
+
+
+perf_raw |> 
+  filter(str_detect(name, "1GB")) |>
+  filter(str_detect(name, "kma")) |>
+  ggbarplot(x = "name", y = "combined_cpu_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40,
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5, lab.pos = "in") + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Combined CPU time of various kma conditions in ARG pipeline\n1GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(str_detect(name, "fastp")) |>
+  ggbarplot(x = "name", y = "combined_cpu_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, 
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5, lab.pos = "in") + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Combined CPU time of various fastp conditions in ARG pipeline\n5GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(str_detect(name, "kma")) |>
+  ggbarplot(x = "name", y = "combined_cpu_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40,
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5, lab.pos = "in") + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Combined CPU time of various kma conditions in ARG pipeline\n1GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+
+
+```
+
+
+```{r}
+# cycles
+perf_raw |> 
+  filter(str_detect(name, "1GB")) |>
+  filter(!str_detect(name, "mem")) |>
+    ggbarplot(x = "name", y = "cycles", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Cycles",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") + 
+  yscale("log10", .format = TRUE) +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean CPU cycles of each tool in ARG pipeline\n1GB paired end metagenome file input compressed from disk",
+  subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n") &
+    theme(plot.subtitle = element_text(size = 8))
+  # ggboxplot(x = "name", y = "cycles",
+  #           add = c("jitter", "mean"), color = "name", fill = "name", alpha = 0.1, palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#FF7F50", "#4CAF50", "#FFD700"),
+  #           x.text.angle = 45, x.text.size = 5)  + rremove("legend") + stat_summary(fun.data = function(x) data.frame(y = 10 - 0.2, label = paste("", round(mean(10^x), 0))), geom="text", vjust = 2, size = 3) + yscale("log10", .format = TRUE) + theme(axis.text.x = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "1GB")) |>
+  filter(str_detect(name, "mem"), !str_detect(name, "unzip")) |>
+    ggbarplot(x = "name", y = "cycles", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Cycles",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") + 
+  yscale("log10", .format = TRUE) +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean CPU cycles of each tool in ARG pipeline\n1GB paired end metagenome file input compressed from memory",
+  subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n") &
+    theme(plot.subtitle = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "1GB")) |>
+  filter(str_detect(name, "unzip")) |>
+    ggbarplot(x = "name", y = "cycles", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Cycles",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") + 
+  yscale("log10", .format = TRUE) +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean CPU cycles of each tool in ARG pipeline\n1GB paired end metagenome file input uncompressed from memory",
+  subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n") &
+    theme(plot.subtitle = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(!str_detect(name, "mem")) |>
+    ggbarplot(x = "name", y = "cycles", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Cycles",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") + 
+  yscale("log10", .format = TRUE) +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean CPU cycles of each tool in ARG pipeline\n5GB paired end metagenome file input compressed from disk",
+  subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n") &
+    theme(plot.subtitle = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(str_detect(name, "mem"), !str_detect(name, "unzip")) |>
+    ggbarplot(x = "name", y = "cycles", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Cycles",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") + 
+  yscale("log10", .format = TRUE) +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean CPU cycles of each tool in ARG pipeline\n5GB paired end metagenome file input compressed from memory",
+  subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n") &
+    theme(plot.subtitle = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(str_detect(name, "unzip")) |>
+    ggbarplot(x = "name", y = "cycles", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Cycles",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") + 
+  yscale("log10", .format = TRUE) +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean CPU cycles of each tool in ARG pipeline\n1GB paired end metagenome file input uncompressed from memory",
+  subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n") &
+    theme(plot.subtitle = element_text(size = 8))
+
+#####################################################
+
+perf_raw |> 
+  filter(str_detect(name, "1GB")) |>
+  filter(str_detect(name, "fastp")) |>
+  ggbarplot(x = "name", y = "cycles", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean CPU cycles of various fastp conditions in ARG pipeline\n1GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+
+perf_raw |> 
+  filter(str_detect(name, "1GB")) |>
+  filter(str_detect(name, "kma")) |>
+  ggbarplot(x = "name", y = "cycles", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean CPU cycles of various kma conditions in ARG pipeline\n1GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(str_detect(name, "fastp")) |>
+  ggbarplot(x = "name", y = "cycles", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean CPU cycles of various fastp conditions in ARG pipeline\n5GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(str_detect(name, "kma")) |>
+  ggbarplot(x = "name", y = "cycles", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean CPU cycles of various kma conditions in ARG pipeline\n5GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+  # ggboxplot(x = "name", y = "cycles", add = c("jitter", "mean"), x.text.angle = 45, x.text.size = 5) + theme(axis.text.x = element_text(size = 8))
+```
+```{r}
+perf_raw |> 
+  filter(str_detect(name, "1GB")) |>
+  filter(str_detect(name, "unzip")) |>
+  ggboxplot(x = "name", y = "elapsed_time",
+            add = c("jitter", "mean"), color = "name", fill = "name", alpha = 0.1, palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#FF7F50", "#4CAF50", "#FFD700"),
+            x.text.angle = 45, x.text.size = 5)  + rremove("legend") + 
+    theme(axis.text.x = element_text(size = 7))
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(!str_detect(name, "mem")) |>
+  ggboxplot(x = "name", y = "elapsed_time",
+            add = c("jitter", "mean"), color = "name", fill = "name", alpha = 0.1, palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#FF7F50", "#4CAF50", "#FFD700"),
+            x.text.angle = 45, x.text.size = 5)  + rremove("legend") + 
+  theme(axis.text.x = element_text(size = 7))
+
+
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(str_detect(name, "unzip")) |>
+ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean elapsed time of ARG pipeline from memory decompressed\n1GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(str_detect(name, "mem"), !str_detect(name, "unzip")) |>
+ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean elapsed time of ARG pipeline from memory compressed\n1GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+
+perf_raw |> 
+  filter(str_detect(name, "5GB")) |>
+  filter(!str_detect(name, "mem")) |>
+ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue"),
+            x.text.angle = 40, lab.pos = "in",
+            xlab = "sample name (tool used and experiment conditions)",
+            ylab = "Combined CPU time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 2.5) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Mean elapsed time of ARG pipeline from disk compressed\n1GB paired end metagenome file",
+                         subtitle = "Intel Xeon Gold 6226R (2.90GHz) - single thread\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+```
+
+
+

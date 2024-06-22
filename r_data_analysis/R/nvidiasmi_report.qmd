@@ -1,0 +1,96 @@
+---
+title: "/usr/bin/time comparison kma,blend,bwa-mem-gasal2,barracuda"
+execute: 
+  echo: false
+  eval: true
+format: html
+editor: 
+  markdown: 
+    wrap: 80
+---
+```{r}
+#load libraries
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+```
+
+```{r}
+smi_file_names = list.files('../../thesis_dir/data/experiment_raw/gpu_times/', recursive = TRUE, full.names = TRUE, pattern = 'nvidiasmi')
+
+smi_file_names
+```
+
+
+
+```{r}
+# "../../thesis_dir/data/experiment_raw/gpu_times/bwa-gasal2_metagenome_nvidiasmi_pipe_1.txt"           
+# [12] "../../thesis_dir/data/experiment_raw/gpu_times/bwa-gasal2_metagenome_nvidiasmi_pipe_16.txt"          
+# [13] "../../thesis_dir/data/experiment_raw/gpu_times/bwa-gasal2_metagenome_nvidiasmi_pipe_2.txt"           
+# [14] "../../thesis_dir/data/experiment_raw/gpu_times/bwa-gasal2_metagenome_nvidiasmi_pipe_4.txt"           
+# [15] "../../thesis_dir/data/experiment_raw/gpu_times/bwa-gasal2_metagenome_nvidiasmi_pipe_8.txt"
+bwa_gasal_pipe_metagen_1 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/bwa-gasal2_metagenome_nvidiasmi_pipe_1.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+bwa_pipe_plt_metagen_1 <- bwa_gasal_pipe_metagen_1 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)", ylab = "GPU use (%)",) +
+  scale_x_discrete(breaks = bwa_gasal_pipe_metagen_1$second[seq(1, length(bwa_gasal_pipe_metagen_1$second), by = 300)]) + 
+  plot_annotation(title = "BWA-gasal2 1GB metagenome genome 1 CPU threads\nNVIDIA A100",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+  
+
+bwa_gasal_pipe_metagen_2 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/bwa-gasal2_metagenome_nvidiasmi_pipe_2.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+bwa_pipe_plt_metagen_2 <- bwa_gasal_pipe_metagen_2 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)", ylab = "GPU use (%)",) +
+  scale_x_discrete(breaks = bwa_gasal_pipe_metagen_2$second[seq(1, length(bwa_gasal_pipe_metagen_2$second), by = 150)]) + 
+  plot_annotation(title = "BWA-gasal2 1GB metagenome genome 2 CPU threads\nNVIDIA A100",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+bwa_gasal_pipe_metagen_4 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/bwa-gasal2_metagenome_nvidiasmi_pipe_4.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+bwa_pipe_plt_metagen_4 <- bwa_gasal_pipe_metagen_4 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)", ylab = "GPU use (%)",) +
+  scale_x_discrete(breaks = bwa_gasal_pipe_metagen_4$second[seq(1, length(bwa_gasal_pipe_metagen_4$second), by = 50)])  + 
+  plot_annotation(title = "BWA-gasal2 1GB metagenome genome 4 CPU threads\nNVIDIA A100",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+  
+
+bwa_gasal_pipe_metagen_8 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/bwa-gasal2_metagenome_nvidiasmi_pipe_8.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+bwa_pipe_plt_metagen_8 <- bwa_gasal_pipe_metagen_8 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)", ylab = "GPU use (%)",) +
+  scale_x_discrete(breaks = bwa_gasal_pipe_metagen_8$second[seq(1, length(bwa_gasal_pipe_metagen_8$second), by = 50)])  + 
+  plot_annotation(title = "BWA-gasal2 1GB metagenome genome 8 CPU threads\nNVIDIA A100",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+
+bwa_gasal_pipe_metagen_16 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/bwa-gasal2_metagenome_nvidiasmi_pipe_16.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+bwa_pipe_plt_metagen_16 <- bwa_gasal_pipe_metagen_16 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)", ylab = "GPU use (%)",) + scale_x_discrete(breaks = bwa_gasal_pipe_metagen_16$second[seq(1, length(bwa_gasal_pipe_metagen_16$second), by = 20)])  + 
+  plot_annotation(title = "BWA-gasal2 1GB metagenome genome 16 CPU threads\nNVIDIA A100",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+(bwa_pipe_plt_metagen_1 | bwa_pipe_plt_metagen_2 | bwa_pipe_plt_metagen_4) /
+(bwa_pipe_plt_metagen_8 | bwa_pipe_plt_metagen_16) + 
+  plot_annotation(title = "BWA-gasal2 1GB metagenome genome 1, 2, 4, 8, 16 CPU threads\nNVIDIA A100",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+```
+

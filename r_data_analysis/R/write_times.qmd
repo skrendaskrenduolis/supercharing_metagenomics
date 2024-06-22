@@ -1,0 +1,323 @@
+---
+title: "Plotting fastp+kma runtimes at various thread counts on local machine"
+execute: 
+  echo: false
+  eval: true
+format: html
+editor: 
+  markdown: 
+    wrap: 80
+---
+
+
+```{r}
+#load libraries
+library(matrixStats)
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+library(patchwork)
+library(forcats)
+#library(hrbrthemes)
+
+```
+
+```{r}
+set.seed(42)
+#load data
+write_times_raw <- read_csv2("../../thesis_dir/data/benchmark_results_edited/write_times.csv", col_names = "filename")
+
+read_times_raw <- read_csv2("../../thesis_dir/data/benchmark_results_edited/read_times.csv", col_names = "filename")
+
+gunzip_times_raw <- read_csv2("../../thesis_dir/data/benchmark_results_edited/gzip_times.csv", col_names = "filename")
+
+decompression_times_raw <- read_csv2("../../thesis_dir/data/benchmark_results_edited/decompression_times.csv", col_names = "filename")
+
+# clean data write
+write_times_clean <- write_times_raw |>
+  separate_wider_delim(cols = filename, delim = ",", names = c("filename", "time")) |>
+  separate_wider_delim(cols = time, delim = ":", names = c("minutes", "seconds")) |>
+  mutate(
+    write_time_seconds = as.numeric(minutes) * 60 + as.numeric(seconds)) |>
+  select(filename, write_time_seconds) |>
+  separate_wider_delim(cols = filename, delim = "GB", names = c("filesize_GB", NA))
+
+
+# clean data read
+read_times_clean <- read_times_raw |>
+  separate_wider_delim(cols = filename, delim = ",", names = c("filename", "time")) |>
+  separate_wider_delim(cols = time, delim = ":", names = c("minutes", "seconds")) |>
+  mutate(
+    read_time_seconds = as.numeric(minutes) * 60 + as.numeric(seconds)) |>
+  select(filename, read_time_seconds) |>
+  separate_wider_delim(cols = filename, delim = "GB", names = c("filesize_GB", NA))
+
+
+# clean data gunzip
+gunzip_times_clean <- gunzip_times_raw |>
+  separate_wider_delim(cols = filename, delim = ",", names = c("filename", "time")) |>
+  separate_wider_delim(cols = time, delim = ":", names = c("minutes", "seconds")) |>
+  mutate(
+    gunzip_time_seconds = as.numeric(minutes) * 60 + as.numeric(seconds)) |>
+  select(filename, gunzip_time_seconds) |>
+  separate_wider_delim(cols = filename, delim = "GB", names = c("filesize_GB", NA))
+
+
+
+# clean data decompression
+decompression_times_clean <- decompression_times_raw |>
+  separate_wider_delim(cols = filename, delim = ",", names = c("filename", "time")) |>
+  separate_wider_delim(cols = time, delim = ":", names = c("minutes", "seconds")) |>
+  mutate(
+    decompression_time_seconds = as.numeric(minutes) * 60 + as.numeric(seconds)) |>
+  select(filename, decompression_time_seconds)  |>
+  mutate(compression_level = as.numeric(str_extract(filename, "\\d+"))) |>
+  select(compression_level, decompression_time_seconds)
+```
+
+
+
+```{r}
+# write time plots
+write_time_summary <- write_times_clean |> 
+  group_by(filesize_GB) |>
+  summarise(mean.write_time_s = mean(write_time_seconds, na.rm = TRUE),
+            sd.write_time_s = sd(write_time_seconds, na.rm = TRUE),
+            n.write_time_s = n()) |>
+  mutate(se.write_time_s = sd.write_time_s / sqrt(n.write_time_s),
+         lower.ci.write_time_s = mean.write_time_s
+         - qt(1 - (0.05 / 2), n.write_time_s - 1) * se.write_time_s,
+         upper.ci.write_time_s = mean.write_time_s
+         + qt(1 - (0.05 / 2), n.write_time_s - 1) * se.write_time_s) |>
+  arrange(as.numeric(filesize_GB))
+
+w_summary_plot <- write_time_summary |>
+  ggplot(aes(x = factor(filesize_GB, levels = c(1.8, 9.5, 19)),
+             y = mean.write_time_s, color = filesize_GB)) +
+  geom_point() + 
+  geom_errorbar(aes(x = filesize_GB, 
+                    ymin = lower.ci.write_time_s,
+                    ymax = upper.ci.write_time_s)) +
+  theme_minimal() +
+  theme(axis.title.y = element_text(size = 8)) +
+  labs(x = "Filesize (GB)",
+       y = "Mean elapsed (wall-clock) time (s)")
+
+w_plot1 <- write_times_clean |>
+  filter(filesize_GB == "1.8") |>
+  mutate(filesize_GB = as_factor(filesize_GB)) |>
+  ggplot(aes(y = write_time_seconds)) +
+  geom_boxplot() +
+  theme_minimal() + 
+  theme(axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 8)) +
+  labs(x = "1.8 GB",
+       y = "Elapsed (wall-clock) time (s)")
+
+w_plot2 <- write_times_clean |>
+  filter(filesize_GB == "9.5") |>
+  mutate(filesize_GB = as_factor(filesize_GB)) |>
+  ggplot(aes(y = write_time_seconds)) +
+  geom_boxplot()  +
+  theme_minimal() + 
+  theme(axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 8)) +
+  labs(x = "9.5 GB",
+       y = "Elapsed (wall-clock) time (s)")
+
+w_plot3 <- write_times_clean |>
+  filter(filesize_GB == "19") |>
+  mutate(filesize_GB = as_factor(filesize_GB)) |>
+  ggplot(aes(y = write_time_seconds)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 8)) +
+  labs(x = "19 GB",
+       y = "Elapsed (wall-clock) time (s)",
+       )
+
+w_plot1 + w_plot2 + w_plot3 + w_summary_plot +
+  plot_annotation(title = "Elapsed write time for various gzip compressed file sizes",
+                  subtitle = "Intel Xeon Processor 2660v3 @ 2.60GHz\nCommand measured: cp /tmpfs/file.gz ~/homedir/file.gz")
+```
+
+
+
+```{r}
+# read time plots
+read_time_summary <- read_times_clean |> 
+  group_by(filesize_GB) |>
+  summarise(mean.read_time_s = mean(read_time_seconds, na.rm = TRUE),
+            sd.read_time_s = sd(read_time_seconds, na.rm = TRUE),
+            n.read_time_s = n()) |>
+  mutate(se.read_time_s = sd.read_time_s / sqrt(n.read_time_s),
+         lower.ci.read_time_s = mean.read_time_s
+         - qt(1 - (0.05 / 2), n.read_time_s - 1) * se.read_time_s,
+         upper.ci.read_time_s = mean.read_time_s
+         + qt(1 - (0.05 / 2), n.read_time_s - 1) * se.read_time_s) |>
+  arrange(as.numeric(filesize_GB))
+
+r_summary_plot <- read_time_summary |>
+  ggplot(aes(x = factor(filesize_GB, levels = c(1.8, 9.5, 19)),
+             y = mean.read_time_s, color = filesize_GB)) +
+  geom_point() + 
+  geom_errorbar(aes(x = filesize_GB, 
+                    ymin = lower.ci.read_time_s,
+                    ymax = upper.ci.read_time_s)) +
+  theme_minimal() +
+  theme(axis.title.y = element_text(size = 8)) +
+  labs(x = "Filesize (GB)",
+       y = "Mean elapsed (wall-clock) time (s)")
+
+r_plot1 <- read_times_clean |>
+  filter(filesize_GB == "1.8") |>
+  mutate(filesize_GB = as_factor(filesize_GB)) |>
+  ggplot(aes(y = read_time_seconds)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 8)) +
+  labs(x = "1.8 GB",
+       y = "Elapsed (wall-clock) time (s)")
+
+r_plot2 <- read_times_clean |>
+  filter(filesize_GB == "9.5") |>
+  mutate(filesize_GB = as_factor(filesize_GB)) |>
+  ggplot(aes(y = read_time_seconds)) +
+  geom_boxplot()  +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 8)) +
+  labs(x = "9.5 GB",
+       y = "Elapsed (wall-clock) time (s)")
+
+r_plot3 <- read_times_clean |>
+  filter(filesize_GB == "19") |>
+  mutate(filesize_GB = as_factor(filesize_GB)) |>
+  ggplot(aes(y = read_time_seconds)) +
+  geom_boxplot()  +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 8)) +
+  labs(x = "19 GB",
+       y = "Elapsed (wall-clock) time (s)")
+
+r_plot1 + r_plot2 + r_plot3 + r_summary_plot +
+    plot_annotation(title = "Elapsed read time for various gzip compressed file sizes",
+                  subtitle = "Intel Xeon Processor 2660v3 @ 2.60GHz\nCommand measured: cp  ~/homedir/file.gz /tmpfs/file.gz")
+```
+
+```{r}
+# gunzip time plots
+gunzip_time_summary <- gunzip_times_clean |> 
+  group_by(filesize_GB) |>
+  summarise(mean.gunzip_time_s = mean(gunzip_time_seconds, na.rm = TRUE),
+            sd.gunzip_time_s = sd(gunzip_time_seconds, na.rm = TRUE),
+            n.gunzip_time_s = n()) |>
+  mutate(se.gunzip_time_s = sd.gunzip_time_s / sqrt(n.gunzip_time_s),
+         lower.ci.gunzip_time_s = mean.gunzip_time_s
+         - qt(1 - (0.05 / 2), n.gunzip_time_s - 1) * se.gunzip_time_s,
+         upper.ci.gunzip_time_s = mean.gunzip_time_s
+         + qt(1 - (0.05 / 2), n.gunzip_time_s - 1) * se.gunzip_time_s) |>
+  arrange(as.numeric(filesize_GB))
+
+gunzip_summary_plot <- gunzip_time_summary |>
+  ggplot(aes(x = factor(filesize_GB, levels = c(1.8, 9.5, 19)),
+             y = mean.gunzip_time_s, color = filesize_GB)) +
+  geom_point() + 
+  geom_errorbar(aes(x = filesize_GB, 
+                    ymin = lower.ci.gunzip_time_s,
+                    ymax = upper.ci.gunzip_time_s)) +
+  theme_minimal() +
+  theme(axis.title.y = element_text(size = 8)) +
+  labs(x = "Filesize (GB)",
+       y = "Mean elapsed (wall-clock) time (s)")
+
+gunzip_plot1 <- gunzip_times_clean |>
+  filter(filesize_GB == "1.8") |>
+  mutate(filesize_GB = as_factor(filesize_GB)) |>
+  ggplot(aes(y = gunzip_time_seconds)) +
+  geom_boxplot() +
+  theme_minimal() + 
+  theme(axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 8)) +
+  labs(x = "1.8 GB",
+       y = "Elapsed (wall-clock) time (s)")
+
+gunzip_plot2 <- gunzip_times_clean |>
+  filter(filesize_GB == "9.5") |>
+  mutate(filesize_GB = as_factor(filesize_GB)) |>
+  ggplot(aes(y = gunzip_time_seconds)) +
+  geom_boxplot()  +
+  theme_minimal() + 
+  theme(axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 8)) +
+  labs(x = "9.5 GB",
+       y = "Elapsed (wall-clock) time (s)")
+
+gunzip_plot3 <- gunzip_times_clean |>
+  filter(filesize_GB == "19") |>
+  mutate(filesize_GB = as_factor(filesize_GB)) |>
+  ggplot(aes(y = gunzip_time_seconds)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 8)) +
+  labs(x = "19 GB",
+       y = "Elapsed (wall-clock) time (s)",
+       )
+
+gunzip_plot1 + gunzip_plot2 + gunzip_plot3 + gunzip_summary_plot +
+    plot_annotation(title = "Elapsed decompression time for various gzip compressed file sizes",
+                  subtitle = "Intel Xeon Processor 2660v3 @ 2.60GHz\nCommand measured: gunzip -c /tmpfs/file.gz > /dev/null")
+```
+
+```{r}
+# decompression level time plots
+
+decompression_time_summary <- decompression_times_clean |> 
+  group_by(compression_level) |>
+  summarise(mean.decompression_time_s = mean(decompression_time_seconds, na.rm = TRUE),
+            sd.decompression_time_s = sd(decompression_time_seconds, na.rm = TRUE),
+            n.decompression_time_s = n()) |>
+  mutate(se.decompression_time_s = sd.decompression_time_s / sqrt(n.decompression_time_s),
+         lower.ci.decompression_time_s = mean.decompression_time_s
+         - qt(1 - (0.05 / 2), n.decompression_time_s - 1) * se.decompression_time_s,
+         upper.ci.decompression_time_s = mean.decompression_time_s
+         + qt(1 - (0.05 / 2), n.decompression_time_s - 1) * se.decompression_time_s) |>
+  arrange(as.numeric(compression_level))
+
+decompression_summary_plot <- decompression_time_summary |>
+  mutate(compression_level = as_factor(compression_level)) |>
+  ggplot(aes(x = compression_level,
+             y = mean.decompression_time_s, 
+             color = compression_level)) +
+  geom_point() + 
+  geom_errorbar(aes(x = compression_level, 
+                    ymin = lower.ci.decompression_time_s,
+                    ymax = upper.ci.decompression_time_s)) +
+  theme_minimal() +
+  theme(axis.title.y = element_text(size = 8)) +
+  labs(x = "Compression level",
+       y = "Mean elapsed (wall-clock) time (s)")
+
+decompression_plot1 <- decompression_times_clean |>
+  mutate(compression_level = as_factor(compression_level)) |>
+  ggplot(aes(y = decompression_time_seconds,
+             x = compression_level)) +
+  geom_boxplot() +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8)) +
+  labs(x = "Compression level",
+       y = "Elapsed (wall-clock) time (s)")
+
+
+decompression_plot1 + decompression_summary_plot +
+      plot_annotation(title = "Elapsed decompression time for various compression\nlevels of originally uncompressed 8.1 GB file",
+                  subtitle = "Intel Xeon Processor 2660v3 @ 2.60GHz\nCommand measured: gunzip -`compression level` -c /tmpfs/file.gz > /dev/null")
+
+
+```
+

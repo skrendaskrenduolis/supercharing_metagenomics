@@ -1,0 +1,450 @@
+---
+title: "Perf stat 9.5GB"
+execute: 
+  echo: false
+  eval: true
+format: html
+editor: 
+  markdown: 
+    wrap: 80
+---
+```{r}
+#load libraries
+library(matrixStats)
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+
+```
+
+```{r}
+fastp_perf_raw <- read_tsv("../../thesis_dir/data/pipetest_tsv/fastp_pipe_stat_9.5GB.txt.tsv")
+kma_perf_raw <- read_tsv("../../thesis_dir/data/pipetest_tsv/kma_pipe_stat_9.5GB.txt.tsv")
+samtools_perf_raw <- read_tsv("../../thesis_dir/data/pipetest_tsv/samtools_sort_stat_9.5GB.txt.tsv")
+mpileup_perf_raw <- read_tsv("../../thesis_dir/data/pipetest_tsv/bcftools_mpileup_stat_9.5GB.txt.tsv")
+call_perf_raw <- read_tsv("../../thesis_dir/data/pipetest_tsv/bcftools_call_stat_9.5GB.txt.tsv")
+norm_perf_raw <- read_tsv("../../thesis_dir/data/pipetest_tsv/bcftools_norm_stat_9.5GB.txt.tsv")
+filter_perf_raw <- read_tsv("../../thesis_dir/data/pipetest_tsv/bcftools_filter_stat_9.5GB.txt.tsv")
+
+```
+
+```{r}
+# summaries
+# fastp 
+fastp_perf_summary <- fastp_perf_raw |> 
+  summarise(mean.elapsed_time = mean(elapsed_time, na.rm = TRUE),
+            sd.elapsed_time = sd(elapsed_time, na.rm = TRUE),
+            mean.usr_time = mean(usr_time, na.rm = TRUE),
+            sd.usr_time = sd(usr_time, na.rm = TRUE),
+            mean.sys_time = mean(sys_time, na.rm = TRUE),
+            sd.sys_time = sd(sys_time, na.rm = TRUE),
+            mean.cycles = mean(cycles, na.rm = TRUE),
+            sd.cycles = sd(cycles, na.rm = TRUE),
+            mean.instructions = mean(instructions, na.rm = TRUE),
+            sd.instructions = sd(instructions, na.rm = TRUE),
+            mean.ipc = mean(ipc, na.rm = TRUE),
+            sd.ipc = sd(ipc, na.rm = TRUE),
+            n.samples = n()) |>
+  mutate(se.elapsed_time = sd.elapsed_time / sqrt(n.samples),
+         lower.ci.elapsed_time = mean.elapsed_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+         upper.ci.elapsed_time = mean.elapsed_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+se.usr_time = sd.usr_time / sqrt(n.samples),
+         lower.ci.usr_time = mean.usr_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+         upper.ci.usr_time = mean.usr_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+se.sys_time = sd.sys_time / sqrt(n.samples),
+         lower.ci.sys_time = mean.sys_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+         upper.ci.sys_time = mean.sys_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+se.cycles = sd.cycles / sqrt(n.samples),
+         lower.ci.cycles = mean.cycles
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+         upper.ci.cycles = mean.cycles
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+se.instructions = sd.instructions / sqrt(n.samples),
+         lower.ci.instructions = mean.instructions
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+         upper.ci.instructions = mean.instructions
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+se.ipc = sd.ipc / sqrt(n.samples),
+         lower.ci.ipc = mean.ipc
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.ipc,
+         upper.ci.ipc = mean.ipc
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.ipc)
+###
+kma_perf_summary <-  kma_perf_raw |> 
+  summarise(mean.elapsed_time = mean(elapsed_time, na.rm = TRUE),
+            sd.elapsed_time = sd(elapsed_time, na.rm = TRUE),
+            mean.usr_time = mean(usr_time, na.rm = TRUE),
+            sd.usr_time = sd(usr_time, na.rm = TRUE),
+            mean.sys_time = mean(sys_time, na.rm = TRUE),
+            sd.sys_time = sd(sys_time, na.rm = TRUE),
+            mean.cycles = mean(cycles, na.rm = TRUE),
+            sd.cycles = sd(cycles, na.rm = TRUE),
+            mean.instructions = mean(instructions, na.rm = TRUE),
+            sd.instructions = sd(instructions, na.rm = TRUE),
+            mean.ipc = mean(ipc, na.rm = TRUE),
+            sd.ipc = sd(ipc, na.rm = TRUE),
+            n.samples = n()) |>
+  mutate(se.elapsed_time = sd.elapsed_time / sqrt(n.samples),
+         lower.ci.elapsed_time = mean.elapsed_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+         upper.ci.elapsed_time = mean.elapsed_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+se.usr_time = sd.usr_time / sqrt(n.samples),
+         lower.ci.usr_time = mean.usr_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+         upper.ci.usr_time = mean.usr_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+se.sys_time = sd.sys_time / sqrt(n.samples),
+         lower.ci.sys_time = mean.sys_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+         upper.ci.sys_time = mean.sys_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+se.cycles = sd.cycles / sqrt(n.samples),
+         lower.ci.cycles = mean.cycles
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+         upper.ci.cycles = mean.cycles
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+se.instructions = sd.instructions / sqrt(n.samples),
+         lower.ci.instructions = mean.instructions
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+         upper.ci.instructions = mean.instructions
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+se.ipc = sd.ipc / sqrt(n.samples),
+         lower.ci.ipc = mean.ipc
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.ipc,
+         upper.ci.ipc = mean.ipc
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.ipc)
+###
+
+samtools_perf_summary <- samtools_perf_raw |> 
+  summarise(mean.elapsed_time = mean(elapsed_time, na.rm = TRUE),
+            sd.elapsed_time = sd(elapsed_time, na.rm = TRUE),
+            mean.usr_time = mean(usr_time, na.rm = TRUE),
+            sd.usr_time = sd(usr_time, na.rm = TRUE),
+            mean.sys_time = mean(sys_time, na.rm = TRUE),
+            sd.sys_time = sd(sys_time, na.rm = TRUE),
+            mean.cycles = mean(cycles, na.rm = TRUE),
+            sd.cycles = sd(cycles, na.rm = TRUE),
+            mean.instructions = mean(instructions, na.rm = TRUE),
+            sd.instructions = sd(instructions, na.rm = TRUE),
+            mean.ipc = mean(ipc, na.rm = TRUE),
+            sd.ipc = sd(ipc, na.rm = TRUE),
+            n.samples = n()) |>
+  mutate(se.elapsed_time = sd.elapsed_time / sqrt(n.samples),
+         lower.ci.elapsed_time = mean.elapsed_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+         upper.ci.elapsed_time = mean.elapsed_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+se.usr_time = sd.usr_time / sqrt(n.samples),
+         lower.ci.usr_time = mean.usr_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+         upper.ci.usr_time = mean.usr_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+se.sys_time = sd.sys_time / sqrt(n.samples),
+         lower.ci.sys_time = mean.sys_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+         upper.ci.sys_time = mean.sys_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+se.cycles = sd.cycles / sqrt(n.samples),
+         lower.ci.cycles = mean.cycles
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+         upper.ci.cycles = mean.cycles
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+se.instructions = sd.instructions / sqrt(n.samples),
+         lower.ci.instructions = mean.instructions
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+         upper.ci.instructions = mean.instructions
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+se.ipc = sd.ipc / sqrt(n.samples),
+         lower.ci.ipc = mean.ipc
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.ipc,
+         upper.ci.ipc = mean.ipc
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.ipc)
+
+###
+
+mpileup_perf_summary <- mpileup_perf_raw |> 
+  summarise(mean.elapsed_time = mean(elapsed_time, na.rm = TRUE),
+            sd.elapsed_time = sd(elapsed_time, na.rm = TRUE),
+            mean.usr_time = mean(usr_time, na.rm = TRUE),
+            sd.usr_time = sd(usr_time, na.rm = TRUE),
+            mean.sys_time = mean(sys_time, na.rm = TRUE),
+            sd.sys_time = sd(sys_time, na.rm = TRUE),
+            mean.cycles = mean(cycles, na.rm = TRUE),
+            sd.cycles = sd(cycles, na.rm = TRUE),
+            mean.instructions = mean(instructions, na.rm = TRUE),
+            sd.instructions = sd(instructions, na.rm = TRUE),
+            mean.ipc = mean(ipc, na.rm = TRUE),
+            sd.ipc = sd(ipc, na.rm = TRUE),
+            n.samples = n()) |>
+  mutate(se.elapsed_time = sd.elapsed_time / sqrt(n.samples),
+         lower.ci.elapsed_time = mean.elapsed_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+         upper.ci.elapsed_time = mean.elapsed_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+se.usr_time = sd.usr_time / sqrt(n.samples),
+         lower.ci.usr_time = mean.usr_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+         upper.ci.usr_time = mean.usr_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+se.sys_time = sd.sys_time / sqrt(n.samples),
+         lower.ci.sys_time = mean.sys_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+         upper.ci.sys_time = mean.sys_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+se.cycles = sd.cycles / sqrt(n.samples),
+         lower.ci.cycles = mean.cycles
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+         upper.ci.cycles = mean.cycles
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+se.instructions = sd.instructions / sqrt(n.samples),
+         lower.ci.instructions = mean.instructions
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+         upper.ci.instructions = mean.instructions
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+se.ipc = sd.ipc / sqrt(n.samples),
+         lower.ci.ipc = mean.ipc
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.ipc,
+         upper.ci.ipc = mean.ipc
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.ipc)
+
+###
+
+call_perf_summary <- call_perf_raw |> 
+  summarise(mean.elapsed_time = mean(elapsed_time, na.rm = TRUE),
+            sd.elapsed_time = sd(elapsed_time, na.rm = TRUE),
+            mean.usr_time = mean(usr_time, na.rm = TRUE),
+            sd.usr_time = sd(usr_time, na.rm = TRUE),
+            mean.sys_time = mean(sys_time, na.rm = TRUE),
+            sd.sys_time = sd(sys_time, na.rm = TRUE),
+            mean.cycles = mean(cycles, na.rm = TRUE),
+            sd.cycles = sd(cycles, na.rm = TRUE),
+            mean.instructions = mean(instructions, na.rm = TRUE),
+            sd.instructions = sd(instructions, na.rm = TRUE),
+            mean.ipc = mean(ipc, na.rm = TRUE),
+            sd.ipc = sd(ipc, na.rm = TRUE),
+            n.samples = n()) |>
+  mutate(se.elapsed_time = sd.elapsed_time / sqrt(n.samples),
+         lower.ci.elapsed_time = mean.elapsed_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+         upper.ci.elapsed_time = mean.elapsed_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+se.usr_time = sd.usr_time / sqrt(n.samples),
+         lower.ci.usr_time = mean.usr_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+         upper.ci.usr_time = mean.usr_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+se.sys_time = sd.sys_time / sqrt(n.samples),
+         lower.ci.sys_time = mean.sys_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+         upper.ci.sys_time = mean.sys_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+se.cycles = sd.cycles / sqrt(n.samples),
+         lower.ci.cycles = mean.cycles
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+         upper.ci.cycles = mean.cycles
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+se.instructions = sd.instructions / sqrt(n.samples),
+         lower.ci.instructions = mean.instructions
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+         upper.ci.instructions = mean.instructions
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+se.ipc = sd.ipc / sqrt(n.samples),
+         lower.ci.ipc = mean.ipc
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.ipc,
+         upper.ci.ipc = mean.ipc
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.ipc)
+
+###
+
+norm_perf_summary <- norm_perf_raw |> 
+  summarise(mean.elapsed_time = mean(elapsed_time, na.rm = TRUE),
+            sd.elapsed_time = sd(elapsed_time, na.rm = TRUE),
+            mean.usr_time = mean(usr_time, na.rm = TRUE),
+            sd.usr_time = sd(usr_time, na.rm = TRUE),
+            mean.sys_time = mean(sys_time, na.rm = TRUE),
+            sd.sys_time = sd(sys_time, na.rm = TRUE),
+            mean.cycles = mean(cycles, na.rm = TRUE),
+            sd.cycles = sd(cycles, na.rm = TRUE),
+            mean.instructions = mean(instructions, na.rm = TRUE),
+            sd.instructions = sd(instructions, na.rm = TRUE),
+            mean.ipc = mean(ipc, na.rm = TRUE),
+            sd.ipc = sd(ipc, na.rm = TRUE),
+            n.samples = n()) |>
+  mutate(se.elapsed_time = sd.elapsed_time / sqrt(n.samples),
+         lower.ci.elapsed_time = mean.elapsed_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+         upper.ci.elapsed_time = mean.elapsed_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+se.usr_time = sd.usr_time / sqrt(n.samples),
+         lower.ci.usr_time = mean.usr_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+         upper.ci.usr_time = mean.usr_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+se.sys_time = sd.sys_time / sqrt(n.samples),
+         lower.ci.sys_time = mean.sys_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+         upper.ci.sys_time = mean.sys_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+se.cycles = sd.cycles / sqrt(n.samples),
+         lower.ci.cycles = mean.cycles
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+         upper.ci.cycles = mean.cycles
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+se.instructions = sd.instructions / sqrt(n.samples),
+         lower.ci.instructions = mean.instructions
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+         upper.ci.instructions = mean.instructions
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+se.ipc = sd.ipc / sqrt(n.samples),
+         lower.ci.ipc = mean.ipc
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.ipc,
+         upper.ci.ipc = mean.ipc
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.ipc)
+
+###
+
+filter_perf_summary <- filter_perf_raw |> 
+  summarise(mean.elapsed_time = mean(elapsed_time, na.rm = TRUE),
+            sd.elapsed_time = sd(elapsed_time, na.rm = TRUE),
+            mean.usr_time = mean(usr_time, na.rm = TRUE),
+            sd.usr_time = sd(usr_time, na.rm = TRUE),
+            mean.sys_time = mean(sys_time, na.rm = TRUE),
+            sd.sys_time = sd(sys_time, na.rm = TRUE),
+            mean.cycles = mean(cycles, na.rm = TRUE),
+            sd.cycles = sd(cycles, na.rm = TRUE),
+            mean.instructions = mean(instructions, na.rm = TRUE),
+            sd.instructions = sd(instructions, na.rm = TRUE),
+            mean.ipc = mean(ipc, na.rm = TRUE),
+            sd.ipc = sd(ipc, na.rm = TRUE),
+            n.samples = n()) |>
+  mutate(se.elapsed_time = sd.elapsed_time / sqrt(n.samples),
+         lower.ci.elapsed_time = mean.elapsed_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+         upper.ci.elapsed_time = mean.elapsed_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.elapsed_time,
+se.usr_time = sd.usr_time / sqrt(n.samples),
+         lower.ci.usr_time = mean.usr_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+         upper.ci.usr_time = mean.usr_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.usr_time,
+se.sys_time = sd.sys_time / sqrt(n.samples),
+         lower.ci.sys_time = mean.sys_time
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+         upper.ci.sys_time = mean.sys_time
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.sys_time,
+se.cycles = sd.cycles / sqrt(n.samples),
+         lower.ci.cycles = mean.cycles
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+         upper.ci.cycles = mean.cycles
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.cycles,
+se.instructions = sd.instructions / sqrt(n.samples),
+         lower.ci.instructions = mean.instructions
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+         upper.ci.instructions = mean.instructions
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.instructions,
+se.ipc = sd.ipc / sqrt(n.samples),
+         lower.ci.ipc = mean.ipc
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.ipc,
+         upper.ci.ipc = mean.ipc
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.ipc)
+```
+
+
+```{r}
+# combine tibbles
+tibble_list <- list(fastp = fastp_perf_summary, kma = kma_perf_summary, samtools_sort = samtools_perf_summary, bcftools_mpileup = mpileup_perf_summary, bcftools_call = call_perf_summary, bcftools_norm = norm_perf_summary, bcftools_filter = filter_perf_summary)
+
+combined_tibble <- tibble_list |>
+  purrr::imap(~mutate(.x, identifier = .y))
+
+result_tibble <- bind_rows(combined_tibble)
+
+print(result_tibble)
+```
+
+
+```{r}
+# combine tibbles raw
+tibble_list <- list(fastp = fastp_perf_raw, kma = kma_perf_raw, samtools_sort = samtools_perf_raw, bcftools_mpileup = mpileup_perf_raw, bcftools_call = call_perf_raw, bcftools_norm = norm_perf_raw, bcftools_filter = filter_perf_raw)
+
+combined_tibble_raw <- tibble_list |>
+  purrr::imap(~mutate(.x, identifier = .y))
+
+result_tibble_raw <- bind_rows(combined_tibble_raw)
+
+result_tibble_raw <- result_tibble_raw |>
+  mutate(combined_cpu_time = usr_time + sys_time)
+print(result_tibble_raw)
+```
+
+```{r}
+
+#plots
+
+p <- ggboxplot(result_tibble_raw, x = "identifier", y = "elapsed_time",
+                color = "identifier", palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#FF7F50", "#4CAF50", "#FFD700"),
+                add = "jitter", x.text.angle = 45)
+
+p2 <- ggboxplot(result_tibble_raw, x = "identifier", y = "combined_cpu_time",
+                color = "identifier", palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#FF7F50", "#4CAF50", "#FFD700"),
+                add = "jitter", x.text.angle = 45)
+
+p2 <- ggboxplot(result_tibble_raw, x = "identifier", y = "combined_cpu_time",
+                color = "identifier", palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#FF7F50", "#4CAF50", "#FFD700"),
+                add = "jitter", x.text.angle = 45)
+
+p3 <- ggboxplot(result_tibble_raw, x = "identifier", y = "cycles",
+                color = "identifier", palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#FF7F50", "#4CAF50", "#FFD700"),
+                add = c("jitter", "mean"), x.text.angle = 45)
+
+p4 <- ggboxplot(result_tibble_raw, x = "identifier", y = "instructions",
+                color = "identifier", palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#FF7F50", "#4CAF50", "#FFD700"),
+                add = c("jitter", "mean"), x.text.angle = 45)
+
+p5 <- ggboxplot(result_tibble_raw, x = "identifier", y = "ipc",
+                color = "identifier", palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#FF7F50", "#4CAF50", "#FFD700"),
+                add = c("jitter", "mean"), x.text.angle = 45)
+p |> ggpar(
+  title = "Perf stat output of elapsed time (s) - 1 thread",
+  subtitle = "Intel Xeon Gold 6342 @ 2.8 GHz\nDDR4-3200\nMean times displayed per tool",
+  xlab = "Pipeline tool",
+  ylab = "Elapsed time (s)"
+) + rremove("legend") + stat_summary(fun.data = function(x) data.frame(y = max(result_tibble_raw$elapsed_time) - 0.2, label = paste("", round(mean(x), 3))), geom="text",vjust = 2, size = 3)
+
+p2 |> ggpar(
+  title = "Perf stat output of combined CPU time (usr + sys) (s) - 1 thread",
+  subtitle = "Intel Xeon Gold 6342 @ 2.8 GHz\nDDR4-3200\nMean times displayed per tool",
+  xlab = "Pipeline tool",
+  ylab = "Combined CPU time (s)"
+) + rremove("legend") + stat_summary(fun.data = function(x) data.frame(y = max(result_tibble_raw$combined_cpu_time) - 0.2, label = paste("", round(mean(x), 3))), geom="text",vjust = 2, size = 3)
+
+p3 |> ggpar(
+  title = "Perf stat output of CPU cycle amount - 1 thread",
+  subtitle = "Intel Xeon Gold 6342 @ 2.8 GHz\nDDR4-3200\nMean cycles displayed per tool",
+  xlab = "Pipeline tool",
+  ylab = "Cycles"
+) + rremove("legend")  + stat_summary(fun.data = function(x) data.frame(y = 10 - 0.2, label = paste("", round(mean(10^x), 0))), geom="text", vjust = 2, size = 3) + yscale("log10", .format = TRUE)
+
+p4 |> ggpar(
+  title = "Perf stat output of CPU instruction amount - 1 thread",
+  subtitle = "Intel Xeon Gold 6342 @ 2.8 GHz\nDDR4-3200\nMean instruction amount displayed per tool",
+  xlab = "Pipeline tool",
+  ylab = "Instruction amount"
+) + rremove("legend")  + stat_summary(fun.data = function(x) data.frame(y = 10 - 0.2, label = paste("", round(mean(10^x), 0))), geom="text", vjust = 2, size = 3) + yscale("log10", .format = TRUE)
+
+p5|> ggpar(
+  title = "Perf stat output of instructions per cycle (IPC) - 1 thread",
+  subtitle = "Intel Xeon Gold 6342 @ 2.8 GHz\nDDR4-3200\nMean IPC displayed per tool",
+  xlab = "Pipeline tool",
+  ylab = "IPC"
+) + rremove("legend")  + stat_summary(fun.data = function(x) data.frame(y = max(result_tibble_raw$ipc) - 0.2, label = paste("", round(mean(x), 2))), geom="text",vjust = 10, size = 3)
+
+```
+

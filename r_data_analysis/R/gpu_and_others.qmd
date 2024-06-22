@@ -1,0 +1,301 @@
+---
+title: "/usr/bin/time comparison kma,blend,bwa-mem-GASAL2,barracuda"
+execute: 
+  echo: false
+  eval: true
+format: html
+editor: 
+  markdown: 
+    wrap: 80
+---
+```{r}
+#load libraries
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+```
+
+```{r}
+#load data
+raw_gpu_compare_data <- read_table("../../thesis_dir/data/experiment_raw/gpu_times/gpu_tests.tsv", col_types = cols(elapsed_time = col_character()))
+```
+
+```{r}
+#convert to seconds and sort rows
+processed_gpu_compared_data <- raw_gpu_compare_data |>
+  separate(elapsed_time, into = c("mins", "sec"), sep = ":") |>
+  mutate(mins = as.numeric(mins),
+         sec = as.numeric(sec)) |>
+  mutate(`elapsed_time` = (mins * 60) + sec) |>
+  select(name, `elapsed_time`) |>
+  arrange(factor(name, levels =  unique(str_sort(name, numeric = TRUE))))
+
+processed_gpu_compared_data$name <- sub("\\.txt$", "", processed_gpu_compared_data$name)
+
+```
+
+```{r}
+# make plots
+gpu_test_name_list <- processed_gpu_compared_data |>
+  select(name) |>
+  unique() |>
+  pull()
+```
+
+
+```{r}
+# kma
+#ecoli
+processed_gpu_compared_data |>
+  filter(str_detect(name, "ecoli")) |>
+  filter(str_detect(name, "kma")) |>
+  filter(!str_detect(name, "pipe")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of kma for E. coli read alignment",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/13.1.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# ecoli pipe
+processed_gpu_compared_data |>
+  filter(str_detect(name, "ecoli")) |>
+  filter(str_detect(name, "kma")) |>
+  filter(str_detect(name, "pipe")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of piped (fastp 8 threads) kma\nfor E. coli read alignment",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/13.1.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+
+#metagenome
+processed_gpu_compared_data |>
+  filter(str_detect(name, "metagenome")) |>
+  filter(str_detect(name, "kma")) |>
+  filter(!str_detect(name, "pipe")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of kma for metagenome read alignment",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/13.1.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# metagenome pipe
+processed_gpu_compared_data |>
+  filter(str_detect(name, "metagenome")) |>
+  filter(str_detect(name, "kma")) |>
+  filter(str_detect(name, "pipe")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of piped (fastp 8 threads) kma\nfor metagenome read alignment",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/13.1.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+```
+
+```{r}
+# Barracuda
+#ecoli
+processed_gpu_compared_data |>
+  filter(str_detect(name, "ecoli")) |>
+  filter(str_detect(name, "barracuda")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of barracuda for E. coli read alignment",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\nNVIDIA A100 - 40 GB\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+
+# metagenome
+processed_gpu_compared_data |>
+  filter(str_detect(name, "metagenome")) |>
+  filter(str_detect(name, "barracuda")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of barracuda for 1GB paired end metagenome read alignment ",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\nNVIDIA A100 - 40 GB\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+```
+
+
+```{r}
+# Bwa-GASAL2 
+#ecoli
+processed_gpu_compared_data |>
+  filter(str_detect(name, "ecoli")) |>
+  filter(str_detect(name, "bwa")) |>
+  filter(!str_detect(name, "pipe")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 40,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of bwa-GASAL2 for\nE. coli read alignment",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\nNVIDIA A100 - 40 GB\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# ecoli pipe
+processed_gpu_compared_data |>
+  filter(str_detect(name, "ecoli")) |>
+  filter(str_detect(name, "bwa")) |>
+  filter(str_detect(name, "pipe")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 40,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of piped (fastp 8 threads) bwa-GASAL2\nfor E. coli read alignment",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\nNVIDIA A100 - 40 GB\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# metagenome
+processed_gpu_compared_data |>
+  filter(str_detect(name, "metagenome")) |>
+  filter(str_detect(name, "bwa")) |>
+  filter(!str_detect(name, "pipe")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 40,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of bwa-GASAL2 for 1GB paired end metagenome read alignment ",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\nNVIDIA A100 - 40 GB\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# metagenome pipe
+processed_gpu_compared_data |>
+  filter(str_detect(name, "metagenome")) |>
+  filter(str_detect(name, "bwa")) |>
+  filter(str_detect(name, "pipe")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 40,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of piped (fastp 8 threads)  bwa-GASAL2\nfor 1GB paired end metagenome read alignment ",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\nNVIDIA A100 - 40 GB\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+```
+
+
+
+
+
+
+```{r}
+# Blend
+#ecoli
+processed_gpu_compared_data |>
+  filter(str_detect(name, "ecoli")) |>
+  filter(str_detect(name, "blend")) |>
+  filter(!str_detect(name, "pipe")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of Minimap2-BLEND for E. coli read alignment",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/13.1.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# ecoli pipe
+processed_gpu_compared_data |>
+  filter(str_detect(name, "ecoli")) |>
+  filter(str_detect(name, "blend")) |>
+  filter(str_detect(name, "pipe")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of piped (fastp 8 threads) Minimap2-BLEND for E. coli read alignment",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/13.1.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# metagenome
+processed_gpu_compared_data |>
+  filter(str_detect(name, "metagenome")) |>
+  filter(str_detect(name, "blend")) |>
+  filter(!str_detect(name, "pipe")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of Minimap2-BLEND\nfor 1GB paired end metagenome read alignment ",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/13.1.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# metagenome pipe
+processed_gpu_compared_data |>
+  filter(str_detect(name, "metagenome")) |>
+  filter(str_detect(name, "blend")) |>
+  filter(str_detect(name, "pipe")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of Minimap2-BLEND\npiped (fastp 8 threads)  for 1GB paired end metagenome read alignment ",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/13.1.0")  &
+    theme(plot.subtitle = element_text(size = 8))
+```

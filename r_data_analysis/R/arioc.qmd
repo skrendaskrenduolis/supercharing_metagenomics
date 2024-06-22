@@ -1,0 +1,409 @@
+---
+title: "/usr/bin/time comparison arioc"
+execute: 
+  echo: false
+  eval: true
+format: html
+editor: 
+  markdown: 
+    wrap: 80
+---
+```{r}
+#load libraries
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+```
+
+```{r}
+#load data
+raw_arioc_compare_data <- read_table("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_tests.tsv", col_types = cols(elapsed_time = col_character()))
+```
+
+```{r}
+#convert to seconds and sort rows
+processed_arioc_compared_data <- raw_arioc_compare_data |>
+  separate(elapsed_time, into = c("mins", "sec"), sep = ":") |>
+  mutate(mins = as.numeric(mins),
+         sec = as.numeric(sec)) |>
+  mutate(`elapsed_time` = (mins * 60) + sec) |>
+  select(name, `elapsed_time`) |>
+  arrange(factor(name, levels =  unique(str_sort(name, numeric = TRUE))))
+
+processed_arioc_compared_data$name <- sub("_times\\.txt$", "", processed_arioc_compared_data$name)
+
+```
+
+```{r}
+# make plots
+gpu_test_name_list <- processed_arioc_compared_data |>
+  select(name) |>
+  unique() |>
+  pull()
+```
+
+
+```{r}
+# batch size
+#ecoli index
+processed_arioc_compared_data |>
+  filter(str_detect(name, "ecoli")) |>
+  filter(str_detect(name, "index")) |>
+  filter(str_detect(name, "16")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue", "black"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of arioc for E. coli read indexing\n128k 256k 512k 1024k 2048k batch sizes, 16 threads",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# ecoli align
+processed_arioc_compared_data |>
+  filter(str_detect(name, "ecoli")) |>
+  filter(str_detect(name, "align")) |>
+  filter(str_detect(name, "16")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue", "black"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of arioc for E. coli read alignment\n128k 256k 512k 1024k 2048k batch sizes, 16 threads",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+
+# metagenome index
+processed_arioc_compared_data |>
+  filter(str_detect(name, "metagenome")) |>
+  filter(str_detect(name, "index")) |>
+  filter(str_detect(name, "16")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue", "black"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of arioc for 1GB metagenome read indexing\n128k 256k 512k 1024k batch sizes, 16 threads",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# metagenome align
+processed_arioc_compared_data |>
+  filter(str_detect(name, "metagenome")) |>
+  filter(str_detect(name, "align")) |>
+  filter(str_detect(name, "16")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue", "black"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of arioc for 1GB metagenome read alignment\n128k 256k 512k 1024k batch sizes, 16 threads",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+```
+
+
+```{r}
+## THREADS
+#ecoli index
+processed_arioc_compared_data |>
+  filter(str_detect(name, "ecoli")) |>
+  filter(str_detect(name, "index")) |>
+  filter(str_detect(name, "512")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue", "black"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of arioc for E. coli read indexing\n512k batch size, 2 4 8 16 threads",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# ecoli align
+processed_arioc_compared_data |>
+  filter(str_detect(name, "ecoli")) |>
+  filter(str_detect(name, "align")) |>
+  filter(str_detect(name, "512")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue", "black"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of arioc for E. coli read alignment\n512k batch size, 2 4 8 16 threads",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+
+# metagenome index
+processed_arioc_compared_data |>
+  filter(str_detect(name, "metagenome")) |>
+  filter(str_detect(name, "index")) |>
+  filter(str_detect(name, "512")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue", "black"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of arioc for 1GB  metagenome read indexing\n512k batch size, 2 4 8 16 threads",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+
+# metagenome align
+processed_arioc_compared_data |>
+  filter(str_detect(name, "metagenome")) |>
+  filter(str_detect(name, "align")) |>
+  filter(str_detect(name, "512")) |>
+  ggbarplot(x = "name", y = "elapsed_time", color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50", "red", "blue", "black"),
+            x.text.angle = 35,
+            lab.pos = "in",
+            xlab = "sample name with thread count",
+            ylab = "Mean elapsed time (s)",
+ add = c("mean_se"), label = TRUE, lab.size = 3) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 8))  + 
+  plot_annotation(title = "Elapsed time of arioc for 1GB metagenome read alignment\n512k batch size, 2 4 8 16 threads",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\n\n")  &
+    theme(plot.subtitle = element_text(size = 8))
+```
+
+
+```{r}
+arioc_smi_file_names = list.files('../../thesis_dir/data/experiment_raw/gpu_times/arioc/', recursive = TRUE, full.names = TRUE, pattern = 'nvidiasmi')
+
+arioc_smi_file_names
+```
+
+```{r}
+#  [1] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_1024k_16.txt"     
+#  [2] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_128k_16.txt"      
+#  [3] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_2048k_16.txt"     
+#  [4] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_256k_16.txt"      
+#  [5] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_16.txt"      
+#  [6] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_2.txt"       
+#  [7] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_4.txt"       
+#  [8] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_8.txt"       
+#  [9] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_metagenome_nvidiasmi_1024k_16.txt"
+# [10] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_metagenome_nvidiasmi_128k_16.txt" 
+# [11] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_metagenome_nvidiasmi_256k_16.txt" 
+# [12] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_metagenome_nvidiasmi_512k_16.txt" 
+# [13] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_metagenome_nvidiasmi_512k_2.txt"  
+# [14] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_metagenome_nvidiasmi_512k_4.txt"  
+# [15] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_metagenome_nvidiasmi_512k_8.txt" 
+```
+
+```{r}
+arioc_ecoli_128 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_128k_16.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_1 <- arioc_ecoli_128 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) +
+  scale_x_discrete(breaks = arioc_ecoli_128$second[seq(1, length(arioc_ecoli_128$second), by = 10)]) + 
+  plot_annotation(title = "arioc E. coli genome 1 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+  
+
+arioc_ecoli_256 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_256k_16.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_2 <- arioc_ecoli_256 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) +
+  scale_x_discrete(breaks = arioc_ecoli_256$second[seq(1, length(arioc_ecoli_256$second), by = 10)]) + 
+  plot_annotation(title = "arioc E. coli genome 2 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+arioc_ecoli_512 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_16.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_4 <- arioc_ecoli_512 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) +
+  scale_x_discrete(breaks = arioc_ecoli_512$second[seq(1, length(arioc_ecoli_512$second), by = 10)])  + 
+  plot_annotation(title = "arioc E. coli genome 4 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+
+arioc_ecoli_1024 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_1024k_16.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_5 <- arioc_ecoli_512 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) +
+  scale_x_discrete(breaks = arioc_ecoli_512$second[seq(1, length(arioc_ecoli_512$second), by = 10)])  + 
+  plot_annotation(title = "arioc E. coli genome 4 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+
+arioc_ecoli_1024 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_2048k_16.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_6 <- arioc_ecoli_512 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) +
+  scale_x_discrete(breaks = arioc_ecoli_512$second[seq(1, length(arioc_ecoli_512$second), by = 10)])  + 
+  plot_annotation(title = "arioc E. coli genome 4 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+```  
+
+####################################################
+
+```{r}
+arioc_metagenome_128 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_metagenome_nvidiasmi_128k_16.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_met_128 <- arioc_metagenome_128 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) +
+  scale_x_discrete(breaks = arioc_metagenome_128$second[seq(1, length(arioc_metagenome_128$second), by = 60)])  + 
+  plot_annotation(title = "arioc E. coli genome 8 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+
+arioc_metagenome_256 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_metagenome_nvidiasmi_256k_16.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_met_256 <- arioc_metagenome_256 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) + scale_x_discrete(breaks = arioc_metagenome_256$second[seq(1, length(arioc_metagenome_256$second), by = 60)])  + 
+  plot_annotation(title = "arioc E. coli genome 16 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+
+arioc_metagenome_512 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_metagenome_nvidiasmi_512k_16.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_met_512 <- arioc_metagenome_512 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) + scale_x_discrete(breaks = arioc_metagenome_256$second[seq(1, length(arioc_metagenome_256$second), by = 60)])  + 
+  plot_annotation(title = "arioc E. coli genome 16 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+
+arioc_metagenome_1024 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_metagenome_nvidiasmi_1024k_16.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_met_1024 <- arioc_metagenome_1024 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) + scale_x_discrete(breaks = arioc_metagenome_256$second[seq(1, length(arioc_metagenome_256$second), by = 60)])  + 
+  plot_annotation(title = "arioc E. coli genome 16 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+
+# arioc_metagenome_2048 <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_metagenome_nvidiasmi_2048k_16.txt") |> select("utilization.gpu [%]") |>
+#     mutate(second = row_number()-1,
+#            gpu_use = parse_number(`utilization.gpu [%]`)) |>
+#     select(second, gpu_use)
+# 
+# arioc_plt_met_2048 <- arioc_metagenome_2048 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) + scale_x_discrete(breaks = arioc_metagenome_256$second[seq(1, length(arioc_metagenome_256$second), by = 60)])  + 
+#   plot_annotation(title = "arioc E. coli genome 16 CPU threads\nNVIDIA A100 40 GB",
+#                          subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+#     theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+```
+
+#########################################################
+
+```{r}
+(arioc_plt_1 | arioc_plt_2 | arioc_plt_4) / (arioc_plt_5 | arioc_plt_6) + 
+  plot_annotation(title = "Arioc E. coli genome alignment 128k, 256k, 512k, 1024k, 2048k batch size\n16 CPU threads, NVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+(arioc_plt_met_128 | arioc_plt_met_256) / (arioc_plt_met_512 | arioc_plt_met_1024) +
+  plot_annotation(title = "Arioc metagenome alignment 128k, 256k, 512k, 1024k batch size\n16 CPU threads, NVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+```
+
+
+```{r}
+#  [5] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_16.txt"      
+#  [6] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_2.txt"       
+#  [7] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_4.txt"       
+#  [8] "../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_8.txt"
+
+arioc_ecoli_2t <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_2.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_ecol_2t<- arioc_metagenome_1024 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) + scale_x_discrete(breaks = arioc_metagenome_256$second[seq(1, length(arioc_metagenome_256$second), by = 60)])  + 
+  plot_annotation(title = "arioc E. coli genome 16 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+
+
+arioc_ecoli_4t <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_4.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_ecol_4t<- arioc_metagenome_1024 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) + scale_x_discrete(breaks = arioc_metagenome_256$second[seq(1, length(arioc_metagenome_256$second), by = 60)])  + 
+  plot_annotation(title = "arioc E. coli genome 16 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+
+
+arioc_ecoli_8t <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_8.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_ecol_8t<- arioc_metagenome_1024 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) + scale_x_discrete(breaks = arioc_metagenome_256$second[seq(1, length(arioc_metagenome_256$second), by = 60)])  + 
+  plot_annotation(title = "arioc E. coli genome 16 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+
+
+arioc_ecoli_16t <- read_csv("../../thesis_dir/data/experiment_raw/gpu_times/arioc/arioc_ecoli_nvidiasmi_512k_16.txt") |> select("utilization.gpu [%]") |>
+    mutate(second = row_number()-1,
+           gpu_use = parse_number(`utilization.gpu [%]`)) |>
+    select(second, gpu_use)
+
+arioc_plt_ecol_16t<- arioc_metagenome_1024 |> ggline(x = "second", y = "gpu_use", plot_type = c("l"), xlab = "Time (s)",  ylab = "GPU use (%)",) + scale_x_discrete(breaks = arioc_metagenome_256$second[seq(1, length(arioc_metagenome_256$second), by = 60)])  + 
+  plot_annotation(title = "arioc E. coli genome 16 CPU threads\nNVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+
+
+(arioc_plt_ecol_2t | arioc_plt_ecol_4t) / (arioc_plt_ecol_8t | arioc_plt_ecol_16t) + 
+  plot_annotation(title = "Arioc E. coli read alignment 512k batch size\n2, 4, 8, 16 CPU threads, NVIDIA A100 40 GB",
+                         subtitle = "Intel Xeon Gold 6226R (16 core, 2.90GHz)\ngcc/4.8.5 cuda/11.0")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+```
+

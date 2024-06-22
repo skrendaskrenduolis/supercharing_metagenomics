@@ -1,0 +1,303 @@
+---
+title: "/usr/bin/time comparison of fastp thread changes"
+execute: 
+  echo: false
+  eval: true
+format: html
+editor: 
+  markdown: 
+    wrap: 80
+---
+```{r}
+#load libraries
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+```
+
+
+```{r}
+# raw data
+raw_thread_data <- read_table("../../thesis_dir/data/new_data/pipe_elapsed_time_fastp_threads_1GB.tsv")
+raw_cpu_use_data <- read_table("../../thesis_dir/data/new_data/kma_cpu_usage_fastp_threads_pipe_1GB.tsv")
+raw_thread_data_5GB <- read_table("../../thesis_dir/data/new_data/pipe_elapsed_time_fastp_threads_5GB.tsv")
+raw_cpu_use_data_5GB <- read_table("../../thesis_dir/data/new_data/kma_cpu_usage_fastp_threads_pipe_5GB.tsv")
+```
+
+```{r}
+# summary stats
+# elapsed time
+summary_untidy <- raw_thread_data |>
+   summarise(mean.pipe_elapsed_time_fastp_1 = mean(pipe_elapsed_time_fastp_1, na.rm = TRUE),
+            sd.pipe_elapsed_time_fastp_1 = sd(pipe_elapsed_time_fastp_1, na.rm = TRUE),
+            mean.pipe_elapsed_time_fastp_2 = mean(pipe_elapsed_time_fastp_2, na.rm = TRUE),
+            sd.pipe_elapsed_time_fastp_2 = sd(pipe_elapsed_time_fastp_2, na.rm = TRUE),
+            mean.pipe_elapsed_time_fastp_4 = mean(pipe_elapsed_time_fastp_4, na.rm = TRUE),
+            sd.pipe_elapsed_time_fastp_4 = sd(pipe_elapsed_time_fastp_4, na.rm = TRUE),
+            mean.pipe_elapsed_time_fastp_8 = mean(pipe_elapsed_time_fastp_8, na.rm = TRUE),
+            sd.pipe_elapsed_time_fastp_8 = sd(pipe_elapsed_time_fastp_8, na.rm = TRUE),
+            mean.pipe_elapsed_time_fastp_16 = mean(pipe_elapsed_time_fastp_16, na.rm = TRUE),
+            sd.pipe_elapsed_time_fastp_16 = sd(pipe_elapsed_time_fastp_16, na.rm = TRUE),
+            n.samples = n()) |>
+  mutate(se.pipe_elapsed_time_fastp_1 = sd.pipe_elapsed_time_fastp_1 / sqrt(n.samples),
+         lower_ci.pipe_elapsed_time_fastp_1 = mean.pipe_elapsed_time_fastp_1
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_1,
+         upper_ci.pipe_elapsed_time_fastp_1 = mean.pipe_elapsed_time_fastp_1
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_1,
+se.pipe_elapsed_time_fastp_2 = sd.pipe_elapsed_time_fastp_2 / sqrt(n.samples),
+         lower_ci.pipe_elapsed_time_fastp_2 = mean.pipe_elapsed_time_fastp_2
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_2,
+         upper_ci.pipe_elapsed_time_fastp_2 = mean.pipe_elapsed_time_fastp_2
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_2,
+se.pipe_elapsed_time_fastp_4 = sd.pipe_elapsed_time_fastp_4 / sqrt(n.samples),
+         lower_ci.pipe_elapsed_time_fastp_4 = mean.pipe_elapsed_time_fastp_4
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_4,
+         upper_ci.pipe_elapsed_time_fastp_4 = mean.pipe_elapsed_time_fastp_4
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_4,
+se.pipe_elapsed_time_fastp_8 = sd.pipe_elapsed_time_fastp_8 / sqrt(n.samples),
+         lower_ci.pipe_elapsed_time_fastp_8 = mean.pipe_elapsed_time_fastp_8
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_8,
+         upper_ci.pipe_elapsed_time_fastp_8 = mean.pipe_elapsed_time_fastp_8
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_8,
+se.pipe_elapsed_time_fastp_16 = sd.pipe_elapsed_time_fastp_16 / sqrt(n.samples),
+         lower_ci.pipe_elapsed_time_fastp_16 = mean.pipe_elapsed_time_fastp_16
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_16,
+         upper_ci.pipe_elapsed_time_fastp_16 = mean.pipe_elapsed_time_fastp_16
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_16)
+
+
+# kma cpu use
+summary_untidy_kma <- raw_cpu_use_data |>
+   summarise(mean.kma_pipe_1_fastp_threads_1GB.percent = mean(kma_pipe_1_fastp_threads_1GB.percent, na.rm = TRUE),
+            sd.kma_pipe_1_fastp_threads_1GB.percent = sd(kma_pipe_1_fastp_threads_1GB.percent, na.rm = TRUE),
+            mean.kma_pipe_2_fastp_threads_1GB.percent = mean(kma_pipe_2_fastp_threads_1GB.percent, na.rm = TRUE),
+            sd.kma_pipe_2_fastp_threads_1GB.percent = sd(kma_pipe_2_fastp_threads_1GB.percent, na.rm = TRUE),
+            mean.kma_pipe_4_fastp_threads_1GB.percent = mean(kma_pipe_4_fastp_threads_1GB.percent, na.rm = TRUE),
+            sd.kma_pipe_4_fastp_threads_1GB.percent = sd(kma_pipe_4_fastp_threads_1GB.percent, na.rm = TRUE),
+            mean.kma_pipe_8_fastp_threads_1GB.percent = mean(kma_pipe_8_fastp_threads_1GB.percent, na.rm = TRUE),
+            sd.kma_pipe_8_fastp_threads_1GB.percent = sd(kma_pipe_8_fastp_threads_1GB.percent, na.rm = TRUE),
+            mean.kma_pipe_16_fastp_threads_1GB.percent = mean(kma_pipe_16_fastp_threads_1GB.percent, na.rm = TRUE),
+            sd.kma_pipe_16_fastp_threads_1GB.percent = sd(kma_pipe_16_fastp_threads_1GB.percent, na.rm = TRUE),
+            n.samples = n()) |>
+  mutate(se.kma_pipe_1_fastp_threads_1GB.percent = sd.kma_pipe_1_fastp_threads_1GB.percent / sqrt(n.samples),
+         lower_ci.kma_pipe_1_fastp_threads_1GB.percent = mean.kma_pipe_1_fastp_threads_1GB.percent
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_1_fastp_threads_1GB.percent,
+         upper_ci.kma_pipe_1_fastp_threads_1GB.percent = mean.kma_pipe_1_fastp_threads_1GB.percent
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_1_fastp_threads_1GB.percent,
+se.kma_pipe_2_fastp_threads_1GB.percent = sd.kma_pipe_2_fastp_threads_1GB.percent / sqrt(n.samples),
+         lower_ci.kma_pipe_2_fastp_threads_1GB.percent = mean.kma_pipe_2_fastp_threads_1GB.percent
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_2_fastp_threads_1GB.percent,
+         upper_ci.kma_pipe_2_fastp_threads_1GB.percent = mean.kma_pipe_2_fastp_threads_1GB.percent
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_2_fastp_threads_1GB.percent,
+se.kma_pipe_4_fastp_threads_1GB.percent = sd.kma_pipe_4_fastp_threads_1GB.percent / sqrt(n.samples),
+         lower_ci.kma_pipe_4_fastp_threads_1GB.percent = mean.kma_pipe_4_fastp_threads_1GB.percent
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_4_fastp_threads_1GB.percent,
+         upper_ci.kma_pipe_4_fastp_threads_1GB.percent = mean.kma_pipe_4_fastp_threads_1GB.percent
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_4_fastp_threads_1GB.percent,
+se.kma_pipe_8_fastp_threads_1GB.percent = sd.kma_pipe_8_fastp_threads_1GB.percent / sqrt(n.samples),
+         lower_ci.kma_pipe_8_fastp_threads_1GB.percent = mean.kma_pipe_8_fastp_threads_1GB.percent
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_8_fastp_threads_1GB.percent,
+         upper_ci.kma_pipe_8_fastp_threads_1GB.percent = mean.kma_pipe_8_fastp_threads_1GB.percent
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_8_fastp_threads_1GB.percent,
+se.kma_pipe_16_fastp_threads_1GB.percent = sd.kma_pipe_16_fastp_threads_1GB.percent / sqrt(n.samples),
+         lower_ci.kma_pipe_16_fastp_threads_1GB.percent = mean.kma_pipe_16_fastp_threads_1GB.percent
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_16_fastp_threads_1GB.percent,
+         upper_ci.kma_pipe_16_fastp_threads_1GB.percent = mean.kma_pipe_16_fastp_threads_1GB.percent
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_16_fastp_threads_1GB.percent)
+
+
+# summary stats
+# elapsed time 5gb
+summary_untidy_5GB <- raw_thread_data_5GB |>
+   summarise(mean.pipe_elapsed_time_fastp_1 = mean(pipe_elapsed_time_fastp_1, na.rm = TRUE),
+            sd.pipe_elapsed_time_fastp_1 = sd(pipe_elapsed_time_fastp_1, na.rm = TRUE),
+            mean.pipe_elapsed_time_fastp_2 = mean(pipe_elapsed_time_fastp_2, na.rm = TRUE),
+            sd.pipe_elapsed_time_fastp_2 = sd(pipe_elapsed_time_fastp_2, na.rm = TRUE),
+            mean.pipe_elapsed_time_fastp_4 = mean(pipe_elapsed_time_fastp_4, na.rm = TRUE),
+            sd.pipe_elapsed_time_fastp_4 = sd(pipe_elapsed_time_fastp_4, na.rm = TRUE),
+            mean.pipe_elapsed_time_fastp_8 = mean(pipe_elapsed_time_fastp_8, na.rm = TRUE),
+            sd.pipe_elapsed_time_fastp_8 = sd(pipe_elapsed_time_fastp_8, na.rm = TRUE),
+            mean.pipe_elapsed_time_fastp_16 = mean(pipe_elapsed_time_fastp_16, na.rm = TRUE),
+            sd.pipe_elapsed_time_fastp_16 = sd(pipe_elapsed_time_fastp_16, na.rm = TRUE),
+            n.samples = n()) |>
+  mutate(se.pipe_elapsed_time_fastp_1 = sd.pipe_elapsed_time_fastp_1 / sqrt(n.samples),
+         lower_ci.pipe_elapsed_time_fastp_1 = mean.pipe_elapsed_time_fastp_1
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_1,
+         upper_ci.pipe_elapsed_time_fastp_1 = mean.pipe_elapsed_time_fastp_1
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_1,
+se.pipe_elapsed_time_fastp_2 = sd.pipe_elapsed_time_fastp_2 / sqrt(n.samples),
+         lower_ci.pipe_elapsed_time_fastp_2 = mean.pipe_elapsed_time_fastp_2
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_2,
+         upper_ci.pipe_elapsed_time_fastp_2 = mean.pipe_elapsed_time_fastp_2
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_2,
+se.pipe_elapsed_time_fastp_4 = sd.pipe_elapsed_time_fastp_4 / sqrt(n.samples),
+         lower_ci.pipe_elapsed_time_fastp_4 = mean.pipe_elapsed_time_fastp_4
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_4,
+         upper_ci.pipe_elapsed_time_fastp_4 = mean.pipe_elapsed_time_fastp_4
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_4,
+se.pipe_elapsed_time_fastp_8 = sd.pipe_elapsed_time_fastp_8 / sqrt(n.samples),
+         lower_ci.pipe_elapsed_time_fastp_8 = mean.pipe_elapsed_time_fastp_8
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_8,
+         upper_ci.pipe_elapsed_time_fastp_8 = mean.pipe_elapsed_time_fastp_8
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_8,
+se.pipe_elapsed_time_fastp_16 = sd.pipe_elapsed_time_fastp_16 / sqrt(n.samples),
+         lower_ci.pipe_elapsed_time_fastp_16 = mean.pipe_elapsed_time_fastp_16
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_16,
+         upper_ci.pipe_elapsed_time_fastp_16 = mean.pipe_elapsed_time_fastp_16
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.pipe_elapsed_time_fastp_16)
+
+
+# kma cpu use 5gb
+summary_untidy_kma_5GB <- raw_cpu_use_data_5GB |>
+   summarise(mean.kma_pipe_1_fastp_threads_5GB.percent = mean(kma_pipe_1_fastp_threads_5GB.percent, na.rm = TRUE),
+            sd.kma_pipe_1_fastp_threads_5GB.percent = sd(kma_pipe_1_fastp_threads_5GB.percent, na.rm = TRUE),
+            mean.kma_pipe_2_fastp_threads_5GB.percent = mean(kma_pipe_2_fastp_threads_5GB.percent, na.rm = TRUE),
+            sd.kma_pipe_2_fastp_threads_5GB.percent = sd(kma_pipe_2_fastp_threads_5GB.percent, na.rm = TRUE),
+            mean.kma_pipe_4_fastp_threads_5GB.percent = mean(kma_pipe_4_fastp_threads_5GB.percent, na.rm = TRUE),
+            sd.kma_pipe_4_fastp_threads_5GB.percent = sd(kma_pipe_4_fastp_threads_5GB.percent, na.rm = TRUE),
+            mean.kma_pipe_8_fastp_threads_5GB.percent = mean(kma_pipe_8_fastp_threads_5GB.percent, na.rm = TRUE),
+            sd.kma_pipe_8_fastp_threads_5GB.percent = sd(kma_pipe_8_fastp_threads_5GB.percent, na.rm = TRUE),
+            mean.kma_pipe_16_fastp_threads_5GB.percent = mean(kma_pipe_16_fastp_threads_5GB.percent, na.rm = TRUE),
+            sd.kma_pipe_16_fastp_threads_5GB.percent = sd(kma_pipe_16_fastp_threads_5GB.percent, na.rm = TRUE),
+            n.samples = n()) |>
+  mutate(se.kma_pipe_1_fastp_threads_5GB.percent = sd.kma_pipe_1_fastp_threads_5GB.percent / sqrt(n.samples),
+         lower_ci.kma_pipe_1_fastp_threads_5GB.percent = mean.kma_pipe_1_fastp_threads_5GB.percent
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_1_fastp_threads_5GB.percent,
+         upper_ci.kma_pipe_1_fastp_threads_5GB.percent = mean.kma_pipe_1_fastp_threads_5GB.percent
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_1_fastp_threads_5GB.percent,
+se.kma_pipe_2_fastp_threads_5GB.percent = sd.kma_pipe_2_fastp_threads_5GB.percent / sqrt(n.samples),
+         lower_ci.kma_pipe_2_fastp_threads_5GB.percent = mean.kma_pipe_2_fastp_threads_5GB.percent
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_2_fastp_threads_5GB.percent,
+         upper_ci.kma_pipe_2_fastp_threads_5GB.percent = mean.kma_pipe_2_fastp_threads_5GB.percent
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_2_fastp_threads_5GB.percent,
+se.kma_pipe_4_fastp_threads_5GB.percent = sd.kma_pipe_4_fastp_threads_5GB.percent / sqrt(n.samples),
+         lower_ci.kma_pipe_4_fastp_threads_5GB.percent = mean.kma_pipe_4_fastp_threads_5GB.percent
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_4_fastp_threads_5GB.percent,
+         upper_ci.kma_pipe_4_fastp_threads_5GB.percent = mean.kma_pipe_4_fastp_threads_5GB.percent
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_4_fastp_threads_5GB.percent,
+se.kma_pipe_8_fastp_threads_5GB.percent = sd.kma_pipe_8_fastp_threads_5GB.percent / sqrt(n.samples),
+         lower_ci.kma_pipe_8_fastp_threads_5GB.percent = mean.kma_pipe_8_fastp_threads_5GB.percent
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_8_fastp_threads_5GB.percent,
+         upper_ci.kma_pipe_8_fastp_threads_5GB.percent = mean.kma_pipe_8_fastp_threads_5GB.percent
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_8_fastp_threads_5GB.percent,
+se.kma_pipe_16_fastp_threads_5GB.percent = sd.kma_pipe_16_fastp_threads_5GB.percent / sqrt(n.samples),
+         lower_ci.kma_pipe_16_fastp_threads_5GB.percent = mean.kma_pipe_16_fastp_threads_5GB.percent
+         - qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_16_fastp_threads_5GB.percent,
+         upper_ci.kma_pipe_16_fastp_threads_5GB.percent = mean.kma_pipe_16_fastp_threads_5GB.percent
+         + qt(1 - (0.05 / 2), n.samples - 1) * se.kma_pipe_16_fastp_threads_5GB.percent)
+```
+
+
+```{r}
+# elapsed time
+# # editing  summary tables
+
+# Pivot longer
+summary_tidy <- summary_untidy |>
+  select(-n.samples) |> 
+  pivot_longer(cols = everything(), names_to = "prefix", values_to = "value") |>
+  separate(col = prefix, into = c("prefix", "name"), sep = "\\.", remove = FALSE) |>
+  pivot_wider(names_from = prefix, values_from = value)
+
+
+# kma cpu use %
+
+# Pivot longer
+summary_tidy_kma <- summary_untidy_kma |>
+  select(-n.samples) |>
+  rename_with(~str_remove(., '.percent')) |>
+  pivot_longer(cols = everything(), names_to = "prefix", values_to = "value") |>
+  separate(col = prefix, into = c("prefix", "name"), sep = "\\.", remove = FALSE) |>
+  pivot_wider(names_from = prefix, values_from = value)
+
+
+
+# 5GB
+summary_tidy_5GB <- summary_untidy_5GB |>
+  select(-n.samples) |> 
+  pivot_longer(cols = everything(), names_to = "prefix", values_to = "value") |>
+  separate(col = prefix, into = c("prefix", "name"), sep = "\\.", remove = FALSE) |>
+  pivot_wider(names_from = prefix, values_from = value)
+
+
+# kma cpu use %
+
+# Pivot longer
+summary_tidy_kma_5GB <- summary_untidy_kma_5GB |>
+  select(-n.samples) |>
+  rename_with(~str_remove(., '.percent')) |>
+  pivot_longer(cols = everything(), names_to = "prefix", values_to = "value") |>
+  separate(col = prefix, into = c("prefix", "name"), sep = "\\.", remove = FALSE) |>
+  pivot_wider(names_from = prefix, values_from = value)
+```
+
+
+```{r}
+#plots
+
+plt1 <- summary_tidy |>
+  ggbarplot(x = "name", y = "mean",  color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50"),
+            x.text.angle = 45,
+            xlab = "Sample with fastp thread number",
+            ylab = "Mean elapsed (wall-clock) time (s)",
+            lab.pos = "in",
+            label = TRUE,
+            lab.size = 3) + 
+  geom_errorbar(aes(group = name, ymax = upper_ci, ymin = lower_ci)) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 7))
+
+
+
+plt2 <- summary_tidy_kma |>
+  ggbarplot(x = "name", y = "mean",  color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50"),
+            x.text.angle = 45,
+            xlab = "Sample with fastp thread number",
+            ylab = "Mean CPU usage (%) for kma -t 1",
+            lab.pos = "in",
+            label = TRUE,
+            lab.size = 3) + 
+  geom_errorbar(aes(group = name, ymax = upper_ci, ymin = lower_ci)) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 7))
+
+plt1GB <- plt1 + plt2
+plt1GB + plot_annotation(title = "fastp varying threads pipe to kma (elapsed time [s] and % CPU use of kma with -t 1 for 1GB pair-end files)",
+                         subtitle = "2x Intel Xeon Gold 6226R (16 core, 2.90GHz) kma compiled with -Wall -O3 -march=native -g\nn fastp threads = n+3 allocated cores | kma runs 2 processes on -t 1\n") &
+    theme(plot.subtitle = element_text(size = 9), plot.title = element_text(size = 10))
+```
+```{r}
+#plots 5GB
+
+plt3 <- summary_tidy_5GB |>
+  ggbarplot(x = "name", y = "mean",  color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50"),
+            x.text.angle = 35,
+            xlab = "Sample with fastp thread number",
+            ylab = "Mean elapsed (wall-clock) time (s)",
+            label = TRUE,
+            lab.size = 3, lab.pos = "in") + 
+  geom_errorbar(aes(group = name, ymax = upper_ci, ymin = lower_ci)) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 7))
+
+
+
+plt4 <- summary_tidy_kma_5GB |>
+  ggbarplot(x = "name", y = "mean",  color = "name", fill = "name", alpha = 0.1,
+            palette = c("#00AFBB", "#E7B800", "#FC4E07", "#8A2BE2", "#4CAF50"),
+            x.text.angle = 35,
+            xlab = "Sample with fastp thread number",
+            ylab = "Mean CPU usage (%) for kma -t 1",
+            label = TRUE,
+            lab.size = 3, lab.pos = "in") + 
+  geom_errorbar(aes(group = name, ymax = upper_ci, ymin = lower_ci)) + rremove("legend") +
+  theme(axis.text.x = element_text(size = 7))
+
+plt5GB <- plt3 + plt4
+
+plt5GB + plot_annotation(title = "fastp varying threads pipe to kma (elapsed time [s] and % CPU use of kma with -t 1 for 5GB pair-end files)",
+                         subtitle = "2x Intel Xeon Gold 6226R (16 core, 2.90GHz) kma compiled with -Wall -O3 -march=native -g\nn fastp threads = n+3 allocated cores | kma runs 2 processes on -t 1\n")  &
+    theme(plot.subtitle = element_text(size = 8), plot.title = element_text(size = 10))
+```
+
+

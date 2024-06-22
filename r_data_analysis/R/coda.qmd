@@ -1,0 +1,68 @@
+```{r}
+#load libraries
+library(matrixStats)
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+library(patchwork)
+library(forcats)
+library(compositions)
+library(robCompositions)
+```
+```{r}
+# load data
+pokemon_data_raw <- read_delim("../../coda/exam/Pokemon_gen1.csv", delim = ";")
+pokemon_data_raw <- pokemon_data_raw |> mutate_all(~ifelse(is.na(.), "Monotype", .))
+```
+
+```{r}
+x <- pokemon_data_raw |>
+  filter(`Type 2` == "Flying" | `Type 2` == "Poison") |>
+  select(c(HP, Attack, Defense, `Sp. Atk`, `Sp. Def`, Speed)) |>
+  acomp()
+
+pcx <- princomp(x)
+```
+
+
+
+```{r}
+plot(pcx, type = "screeplot", main = 'Scree plot')
+sum(pcx$sdev[1:2]^2)/sum(pcx$sdev^2)
+```
+```{r}
+dots = rep(".", times = nrow(x))
+biplot(pcx, 
+       xlabs = dots, 
+       cex = 0.9)
+```
+
+```{r}
+sub.comp <- list(acomp(x[, c('Sp. Def', 'Speed', 'HP')]))
+
+for (i in 1:length(sub.comp)){
+  plot(sub.comp[[i]], 
+     pca = TRUE, 
+     center = TRUE,
+     col = "gray",
+     pch = 16,
+     col.pca = "red")}
+
+
+```
+
+```{r}
+
+rr <- clustCoDa(x, k=6, scale = "robust", transformation = "pivotCoord")
+rr2 <- clustCoDa(x, k=6, distMethod = "Aitchison", scale = "none", 
+                 transformation = "identity")
+#rr3 <- clustCoDa(x, k=6, distMethod = "Aitchison", method = "single",
+ #                transformation = "identity", scale = "none")
+                 
+## Not run: 
+require(reshape2)
+plot(rr)
+plot(rr, normalized = TRUE)
+plot(rr, normalized = TRUE, which.plot = "partMeans")
+```
+
